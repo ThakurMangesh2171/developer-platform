@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: developer-platform-api
+
+  profiles:
+    active: dev
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    root: INFO
