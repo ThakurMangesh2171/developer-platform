@@ -1,0 +1,21 @@
+package com.developerplatform.common.enums;
+
+public enum ErrorCode {
+
+    INTERNAL_SERVER_ERROR,
+
+    VALIDATION_ERROR,
+
+    RESOURCE_NOT_FOUND,
+
+    BAD_REQUEST,
+
+    CONFLICT,
+
+    UNAUTHORIZED,
+
+    FORBIDDEN,
+
+    USER_ALREADY_EXISTS
+
+}
