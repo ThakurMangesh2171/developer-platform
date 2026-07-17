@@ -24,5 +24,7 @@ public enum ErrorCode {
 
     PROJECT_ALREADY_EXISTS,
 
-    PROJECT_NOT_FOUND
+    PROJECT_NOT_FOUND,
+
+    API_KEY_NOT_FOUND
 }

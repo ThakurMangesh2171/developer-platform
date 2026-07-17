@@ -1,0 +1,101 @@
+package com.developerplatform.apikey.service.impl;
+
+import com.developerplatform.apikey.dto.request.CreateApiKeyRequest;
+import com.developerplatform.apikey.dto.response.ApiKeyResponse;
+import com.developerplatform.apikey.dto.response.CreateApiKeyResponse;
+import com.developerplatform.apikey.entity.ApiKey;
+import com.developerplatform.apikey.enums.ApiKeyStatus;
+import com.developerplatform.apikey.mapper.ApiKeyMapper;
+import com.developerplatform.apikey.repository.ApiKeyRepository;
+import com.developerplatform.apikey.service.interfaces.ApiKeyService;
+import com.developerplatform.common.constants.messages.ApiKeyMessages;
+import com.developerplatform.common.constants.messages.ProjectMessages;
+import com.developerplatform.common.constants.messages.WorkspaceMessages;
+import com.developerplatform.common.enums.ErrorCode;
+import com.developerplatform.common.exception.ResourceNotFoundException;
+import com.developerplatform.common.util.ApiKeyUtils;
+import com.developerplatform.project.entity.Project;
+import com.developerplatform.project.enums.ProjectStatus;
+import com.developerplatform.project.repository.ProjectRepository;
+import com.developerplatform.workspace.enums.WorkspaceStatus;
+import com.developerplatform.workspace.repository.WorkspaceRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class ApiKeyServiceImpl implements ApiKeyService {
+
+    private final ApiKeyRepository apiKeyRepository;
+    private final ProjectRepository projectRepository;
+    private final WorkspaceRepository workspaceRepository;
+
+    @Override
+    @Transactional
+    public CreateApiKeyResponse createApiKey(UUID userId, CreateApiKeyRequest request) {
+        validateProjectOwnership(userId, request.getProjectId());
+
+        String rawKey = ApiKeyUtils.generateRawKey();
+        String prefix = ApiKeyUtils.extractPrefix(rawKey);
+        String hash = ApiKeyUtils.hashKey(rawKey);
+
+        ApiKey apiKey = ApiKey.builder()
+                .projectId(request.getProjectId())
+                .name(request.getName())
+                .keyPrefix(prefix)
+                .keyHash(hash)
+                .status(ApiKeyStatus.ACTIVE)
+                .expiresAt(request.getExpiresAt())
+                .build();
+
+        ApiKey savedApiKey = apiKeyRepository.save(apiKey);
+        return ApiKeyMapper.toCreateResponse(savedApiKey, rawKey);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ApiKeyResponse> getProjectApiKeys(UUID userId, UUID projectId) {
+        validateProjectOwnership(userId, projectId);
+
+        List<ApiKey> apiKeys = apiKeyRepository.findByProjectIdAndDeletedAtIsNull(projectId);
+        return apiKeys.stream()
+                .map(ApiKeyMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void revokeApiKey(UUID userId, UUID apiKeyId) {
+        ApiKey apiKey = apiKeyRepository.findByIdAndDeletedAtIsNull(apiKeyId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.API_KEY_NOT_FOUND,
+                        ApiKeyMessages.API_KEY_NOT_FOUND
+                ));
+
+        validateProjectOwnership(userId, apiKey.getProjectId());
+
+        apiKey.setStatus(ApiKeyStatus.REVOKED);
+        apiKey.setDeletedAt(LocalDateTime.now());
+        apiKeyRepository.save(apiKey);
+    }
+
+    private void validateProjectOwnership(UUID userId, UUID projectId) {
+        Project project = projectRepository.findByIdAndStatusNot(projectId, ProjectStatus.ARCHIVED)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.PROJECT_NOT_FOUND,
+                        ProjectMessages.PROJECT_NOT_FOUND
+                ));
+
+        workspaceRepository.findByIdAndUserIdAndStatusNot(project.getWorkspaceId(), userId, WorkspaceStatus.ARCHIVED)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.WORKSPACE_NOT_FOUND,
+                        WorkspaceMessages.WORKSPACE_NOT_FOUND
+                ));
+    }
+}
