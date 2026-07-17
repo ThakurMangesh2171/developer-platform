@@ -11,6 +11,9 @@ public final class ApiPaths {
      * Authentication
      */
     public static final String AUTH = API_V1 + "/auth";
+    public static final String REGISTER = "/register";
+    public static final String LOGIN = "/login";
+    public static final String VERIFY_EMAIL = "/verify-email";
 
     /*
      * Users
