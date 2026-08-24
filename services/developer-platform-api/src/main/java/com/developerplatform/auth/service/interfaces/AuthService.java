@@ -13,4 +13,7 @@ public interface AuthService {
 
     void verifyEmail(String token);
 
+    void forgotPassword(String email);
+
+    void resetPassword(String token, String newPassword);
 }

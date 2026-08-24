@@ -131,4 +131,45 @@ public class AuthServiceImpl implements AuthService {
         // Remove token from Redis
         redisTemplate.delete(redisKey);
     }
+    @Override
+    @Transactional
+    public void forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElse(null);
+
+        // Even if user not found, we don't throw an error to prevent email enumeration
+        if (user != null) {
+            String token = UUID.randomUUID().toString();
+            String redisKey = "password_reset:" + token;
+            redisTemplate.opsForValue().set(redisKey, user.getEmail(), 15, TimeUnit.MINUTES);
+            
+            emailService.sendPasswordResetEmail(user.getEmail(), token);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        String redisKey = "password_reset:" + token;
+        String email = redisTemplate.opsForValue().get(redisKey);
+
+        if (email == null) {
+            throw new BadRequestException(
+                    ErrorCode.BAD_REQUEST,
+                    "Reset token is invalid or has expired"
+            );
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException(
+                        ErrorCode.BAD_REQUEST,
+                        "User not found"
+                ));
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Invalidate token
+        redisTemplate.delete(redisKey);
+    }
 }

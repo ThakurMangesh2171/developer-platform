@@ -70,4 +70,34 @@ public class AuthController {
 
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(
+            @Valid @RequestBody com.developerplatform.auth.dto.request.ForgotPasswordRequest request
+    ) {
+        authService.forgotPassword(request.getEmail());
+        
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .success(true)
+                .message("If an account exists, a password reset email will be sent.")
+                .timestamp(LocalDateTime.now())
+                .build();
+                
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody com.developerplatform.auth.dto.request.ResetPasswordRequest request
+    ) {
+        authService.resetPassword(request.getToken(), request.getNewPassword());
+        
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .success(true)
+                .message("Password reset successfully. You can now login.")
+                .timestamp(LocalDateTime.now())
+                .build();
+                
+        return ResponseEntity.ok(response);
+    }
 }

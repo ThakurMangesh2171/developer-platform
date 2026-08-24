@@ -48,4 +48,34 @@ public class EmailServiceImpl implements EmailService {
             log.error("[EMAIL] Failed to send verification email to {}", toEmail, e);
         }
     }
+
+    @Override
+    @Async("mailExecutor")
+    public void sendPasswordResetEmail(String toEmail, String token) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setTo(toEmail);
+            helper.setSubject("Reset your password - Developer Platform");
+
+            // Frontend URL for password reset (would typically point to frontend, not API directly)
+            // But for simplicity in this MVP, we log it
+            String resetUrl = "http://localhost:3000/reset-password?token=" + token;
+
+            String htmlContent = "<h3>Password Reset Request</h3>" +
+                    "<p>You requested to reset your password. Click the link below to set a new password:</p>" +
+                    "<p><a href=\"" + resetUrl + "\" style=\"display: inline-block; padding: 10px 20px; color: white; background-color: #007bff; text-decoration: none; border-radius: 5px;\">Reset Password</a></p>" +
+                    "<br/>" +
+                    "<p>This link is valid for 15 minutes.</p>";
+
+            helper.setText(htmlContent, true);
+
+            log.info("[EMAIL] Sending password reset email to {} with link: {}", toEmail, resetUrl);
+            mailSender.send(message);
+            log.info("[EMAIL] Password reset email sent successfully to {}", toEmail);
+        } catch (Exception e) {
+            log.error("[EMAIL] Failed to send password reset email to {}", toEmail, e);
+        }
+    }
 }
