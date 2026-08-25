@@ -23,6 +23,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.developerplatform.auth.dto.response.UserResponse;
+import com.developerplatform.common.exception.ResourceNotFoundException;
+
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -171,5 +174,21 @@ public class AuthServiceImpl implements AuthService {
 
         // Invalidate token
         redisTemplate.delete(redisKey);
+    }
+
+    @Override
+    public UserResponse getUserProfile(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "User not found"
+                ));
+        
+        return UserResponse.builder()
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .email(user.getEmail())
+                .build();
     }
 }

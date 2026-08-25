@@ -4,6 +4,7 @@ import com.developerplatform.auth.dto.request.LoginRequest;
 import com.developerplatform.auth.dto.request.RegisterRequest;
 import com.developerplatform.auth.dto.response.LoginResponse;
 import com.developerplatform.auth.dto.response.RegisterResponse;
+import com.developerplatform.auth.dto.response.UserResponse;
 import com.developerplatform.auth.service.interfaces.AuthService;
 import com.developerplatform.common.constants.ApiPaths;
 import com.developerplatform.common.constants.messages.UserMessages;
@@ -12,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @RestController
 @RequestMapping(ApiPaths.AUTH)
@@ -98,6 +101,21 @@ public class AuthController {
                 .timestamp(LocalDateTime.now())
                 .build();
                 
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> getMe(Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        UserResponse userResponse = authService.getUserProfile(userId);
+
+        ApiResponse<UserResponse> response = ApiResponse.<UserResponse>builder()
+                .success(true)
+                .message("User profile retrieved successfully")
+                .data(userResponse)
+                .timestamp(LocalDateTime.now())
+                .build();
+
         return ResponseEntity.ok(response);
     }
 }

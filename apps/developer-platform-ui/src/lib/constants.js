@@ -4,6 +4,7 @@ export const API_ENDPOINTS = {
     LOGIN: '/api/v1/auth/login',
     REGISTER: '/api/v1/auth/register',
     VERIFY_EMAIL: '/api/v1/auth/verify-email',
+    ME: '/api/v1/auth/me',
   },
   WORKSPACE: {
     BASE: '/api/v1/workspaces',

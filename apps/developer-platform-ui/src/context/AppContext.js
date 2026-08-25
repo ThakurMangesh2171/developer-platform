@@ -11,6 +11,23 @@ export function AppContextProvider({ children }) {
   const [workspaces, setWorkspaces] = useState([]);
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [theme, setTheme] = useState('dark');
+
+  // Load theme from local storage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('devplatform_theme') || 'dark';
+    setTheme(savedTheme);
+  }, []);
+
+  // Apply theme to document
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light-theme');
+    } else {
+      document.documentElement.classList.remove('light-theme');
+    }
+    localStorage.setItem('devplatform_theme', theme);
+  }, [theme]);
 
   // Fetch initial data (Workspaces for now, in future we'd fetch /me profile)
   useEffect(() => {
@@ -28,18 +45,20 @@ export function AppContextProvider({ children }) {
         if (wsResponse.success && wsResponse.data) {
           setWorkspaces(wsResponse.data);
           
-          // Set first workspace as active by default if none selected
           if (wsResponse.data.length > 0) {
             setActiveWorkspace(wsResponse.data[0]);
           }
         }
         
-        // Mock user profile for now (since we don't have a GET /me endpoint yet)
-        setUser({
-          firstName: 'Developer',
-          lastName: 'User',
-          email: 'dev@example.com'
-        });
+        // Fetch user profile
+        try {
+          const userResponse = await apiFetch(API_ENDPOINTS.AUTH.ME);
+          if (userResponse.success && userResponse.data) {
+            setUser(userResponse.data);
+          }
+        } catch (authError) {
+          console.error("Failed to fetch user profile", authError);
+        }
       } catch (error) {
         console.error("Failed to load app data:", error);
       } finally {
@@ -57,7 +76,9 @@ export function AppContextProvider({ children }) {
     setWorkspaces,
     activeWorkspace,
     setActiveWorkspace,
-    isLoading
+    isLoading,
+    theme,
+    setTheme
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -109,7 +109,7 @@ export default function Sidebar() {
 
       {/* Bottom Settings */}
       <div style={{ padding: '16px 12px', borderTop: '1px solid var(--border-color)' }}>
-        <Link href="/dashboard" style={{
+        <Link href="/dashboard/settings" style={{
           padding: '10px 12px',
           borderRadius: '8px',
           color: 'var(--text-secondary)',
