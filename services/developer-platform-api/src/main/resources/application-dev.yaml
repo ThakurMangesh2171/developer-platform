@@ -24,6 +24,7 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     schemas: developer_platform
+    validate-on-migrate: false
 
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}

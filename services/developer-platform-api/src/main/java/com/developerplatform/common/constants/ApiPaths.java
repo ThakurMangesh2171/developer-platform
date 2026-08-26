@@ -35,4 +35,14 @@ public final class ApiPaths {
      */
     public static final String API_KEYS = API_V1 + "/api-keys";
 
+    /*
+     * URL Shortener
+     */
+    public static final String URLS = API_V1 + "/urls";
+
+    /*
+     * Feature Flags
+     */
+    public static final String FEATURE_FLAGS = API_V1 + "/feature-flags";
+
 }

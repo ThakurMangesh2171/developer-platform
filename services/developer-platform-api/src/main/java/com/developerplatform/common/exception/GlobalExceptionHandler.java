@@ -88,6 +88,46 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
+            IllegalArgumentException exception,
+            HttpServletRequest request
+    ) {
+
+        ErrorResponse response = ErrorResponse.builder()
+                .success(false)
+                .message(exception.getMessage())
+                .errorCode(ErrorCode.BAD_REQUEST.name())
+                .errors(null)
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
+    @ExceptionHandler(RateLimitException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimitException(
+            RateLimitException exception,
+            HttpServletRequest request
+    ) {
+
+        ErrorResponse response = ErrorResponse.builder()
+                .success(false)
+                .message(exception.getMessage())
+                .errorCode("TOO_MANY_REQUESTS")
+                .errors(null)
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(
             Exception exception,

@@ -2,6 +2,8 @@ package com.developerplatform.auth.service.impl;
 
 import com.developerplatform.auth.dto.request.LoginRequest;
 import com.developerplatform.auth.dto.request.RegisterRequest;
+import com.developerplatform.auth.dto.request.UpdateProfileRequest;
+import com.developerplatform.auth.dto.request.ChangePasswordRequest;
 import com.developerplatform.auth.dto.response.LoginResponse;
 import com.developerplatform.auth.dto.response.RegisterResponse;
 import com.developerplatform.auth.entity.User;
@@ -22,6 +24,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.developerplatform.auth.dto.response.UserResponse;
+import com.developerplatform.common.exception.ResourceNotFoundException;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -130,5 +135,104 @@ public class AuthServiceImpl implements AuthService {
 
         // Remove token from Redis
         redisTemplate.delete(redisKey);
+    }
+    @Override
+    @Transactional
+    public void forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElse(null);
+
+        // Even if user not found, we don't throw an error to prevent email enumeration
+        if (user != null) {
+            String token = UUID.randomUUID().toString();
+            String redisKey = "password_reset:" + token;
+            redisTemplate.opsForValue().set(redisKey, user.getEmail(), 15, TimeUnit.MINUTES);
+            
+            emailService.sendPasswordResetEmail(user.getEmail(), token);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        String redisKey = "password_reset:" + token;
+        String email = redisTemplate.opsForValue().get(redisKey);
+
+        if (email == null) {
+            throw new BadRequestException(
+                    ErrorCode.BAD_REQUEST,
+                    "Reset token is invalid or has expired"
+            );
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException(
+                        ErrorCode.BAD_REQUEST,
+                        "User not found"
+                ));
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Invalidate token
+        redisTemplate.delete(redisKey);
+    }
+
+    @Override
+    public UserResponse getUserProfile(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "User not found"
+                ));
+        
+        return UserResponse.builder()
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .email(user.getEmail())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateProfile(UUID userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "User not found"
+                ));
+
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        
+        User savedUser = userRepository.save(user);
+
+        return UserResponse.builder()
+                .id(savedUser.getId())
+                .firstName(savedUser.getFirstName())
+                .lastName(savedUser.getLastName())
+                .email(savedUser.getEmail())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(UUID userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "User not found"
+                ));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+            throw new BadRequestException(
+                    ErrorCode.BAD_REQUEST,
+                    "Current password is incorrect"
+            );
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 }
