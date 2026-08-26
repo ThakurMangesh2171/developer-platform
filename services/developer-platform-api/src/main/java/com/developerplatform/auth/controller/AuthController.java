@@ -2,6 +2,8 @@ package com.developerplatform.auth.controller;
 
 import com.developerplatform.auth.dto.request.LoginRequest;
 import com.developerplatform.auth.dto.request.RegisterRequest;
+import com.developerplatform.auth.dto.request.UpdateProfileRequest;
+import com.developerplatform.auth.dto.request.ChangePasswordRequest;
 import com.developerplatform.auth.dto.response.LoginResponse;
 import com.developerplatform.auth.dto.response.RegisterResponse;
 import com.developerplatform.auth.dto.response.UserResponse;
@@ -16,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -113,6 +116,39 @@ public class AuthController {
                 .success(true)
                 .message("User profile retrieved successfully")
                 .data(userResponse)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+    
+    @PutMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> updateProfile(
+            Authentication authentication,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        UserResponse userResponse = authService.updateProfile(userId, request);
+
+        ApiResponse<UserResponse> response = ApiResponse.<UserResponse>builder()
+                .success(true)
+                .message("Profile updated successfully")
+                .data(userResponse)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+    
+    @PutMapping("/password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            Authentication authentication,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        authService.changePassword(userId, request);
+
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .success(true)
+                .message("Password changed successfully")
                 .timestamp(LocalDateTime.now())
                 .build();
 

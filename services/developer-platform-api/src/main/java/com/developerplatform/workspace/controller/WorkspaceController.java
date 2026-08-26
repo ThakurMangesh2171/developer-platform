@@ -7,6 +7,7 @@ import com.developerplatform.security.UserPrincipal;
 import com.developerplatform.workspace.dto.request.CreateWorkspaceRequest;
 import com.developerplatform.workspace.dto.request.UpdateWorkspaceRequest;
 import com.developerplatform.workspace.dto.response.WorkspaceResponse;
+import com.developerplatform.workspace.dto.response.WorkspaceStatsResponse;
 import com.developerplatform.workspace.service.interfaces.WorkspaceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -113,6 +114,23 @@ public class WorkspaceController {
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .success(true)
                 .message(WorkspaceMessages.WORKSPACE_DELETED)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+    
+    @GetMapping("/{id}/stats")
+    public ResponseEntity<ApiResponse<WorkspaceStatsResponse>> getWorkspaceStats(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID id) {
+
+        WorkspaceStatsResponse responseData = workspaceService.getWorkspaceStats(principal.getId(), id);
+
+        ApiResponse<WorkspaceStatsResponse> response = ApiResponse.<WorkspaceStatsResponse>builder()
+                .success(true)
+                .message("Workspace stats retrieved successfully")
+                .data(responseData)
                 .timestamp(LocalDateTime.now())
                 .build();
 

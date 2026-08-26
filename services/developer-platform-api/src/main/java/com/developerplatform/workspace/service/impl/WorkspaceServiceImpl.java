@@ -7,11 +7,17 @@ import com.developerplatform.common.exception.ResourceNotFoundException;
 import com.developerplatform.workspace.dto.request.CreateWorkspaceRequest;
 import com.developerplatform.workspace.dto.request.UpdateWorkspaceRequest;
 import com.developerplatform.workspace.dto.response.WorkspaceResponse;
+import com.developerplatform.workspace.dto.response.WorkspaceStatsResponse;
 import com.developerplatform.workspace.entity.Workspace;
 import com.developerplatform.workspace.enums.WorkspaceStatus;
 import com.developerplatform.workspace.mapper.WorkspaceMapper;
 import com.developerplatform.workspace.repository.WorkspaceRepository;
 import com.developerplatform.workspace.service.interfaces.WorkspaceService;
+import com.developerplatform.project.repository.ProjectRepository;
+import com.developerplatform.project.enums.ProjectStatus;
+import com.developerplatform.project.entity.Project;
+import com.developerplatform.apikey.repository.ApiKeyRepository;
+import com.developerplatform.urlshortener.repository.ShortenedUrlRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +32,9 @@ import java.util.stream.Collectors;
 public class WorkspaceServiceImpl implements WorkspaceService {
 
     private final WorkspaceRepository workspaceRepository;
+    private final ProjectRepository projectRepository;
+    private final ApiKeyRepository apiKeyRepository;
+    private final ShortenedUrlRepository shortenedUrlRepository;
 
     @Override
     @Transactional
@@ -99,5 +108,38 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         workspace.setStatus(WorkspaceStatus.ARCHIVED);
         workspace.setDeletedAt(LocalDateTime.now());
         workspaceRepository.save(workspace);
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public WorkspaceStatsResponse getWorkspaceStats(UUID userId, UUID workspaceId) {
+        // Verify workspace exists and belongs to user
+        workspaceRepository.findByIdAndUserIdAndStatusNot(workspaceId, userId, WorkspaceStatus.ARCHIVED)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.WORKSPACE_NOT_FOUND,
+                        WorkspaceMessages.WORKSPACE_NOT_FOUND
+                ));
+                
+        long totalProjects = projectRepository.countByWorkspaceIdAndStatusNot(workspaceId, ProjectStatus.ARCHIVED);
+        
+        List<UUID> projectIds = projectRepository.findByWorkspaceIdAndStatusNot(workspaceId, ProjectStatus.ARCHIVED)
+                .stream().map(Project::getId).collect(Collectors.toList());
+                
+        long totalApiKeys = 0;
+        long totalShortenedUrls = 0;
+        long totalUrlClicks = 0;
+        
+        if (!projectIds.isEmpty()) {
+            totalApiKeys = apiKeyRepository.countByProjectIdInAndDeletedAtIsNull(projectIds);
+            totalShortenedUrls = shortenedUrlRepository.countByProjectIdInAndDeletedAtIsNull(projectIds);
+            totalUrlClicks = shortenedUrlRepository.sumClicksByProjectIdIn(projectIds);
+        }
+        
+        return WorkspaceStatsResponse.builder()
+                .totalProjects(totalProjects)
+                .totalApiKeys(totalApiKeys)
+                .totalShortenedUrls(totalShortenedUrls)
+                .totalUrlClicks(totalUrlClicks)
+                .build();
     }
 }

@@ -13,6 +13,8 @@ import java.util.UUID;
 public interface ApiKeyRepository extends JpaRepository<ApiKey, UUID> {
 
     List<ApiKey> findByProjectIdAndDeletedAtIsNull(UUID projectId);
+    
+    long countByProjectIdInAndDeletedAtIsNull(List<UUID> projectIds);
 
     Optional<ApiKey> findByIdAndDeletedAtIsNull(UUID id);
 

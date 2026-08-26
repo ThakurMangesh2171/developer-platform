@@ -2,6 +2,8 @@ package com.developerplatform.auth.service.impl;
 
 import com.developerplatform.auth.dto.request.LoginRequest;
 import com.developerplatform.auth.dto.request.RegisterRequest;
+import com.developerplatform.auth.dto.request.UpdateProfileRequest;
+import com.developerplatform.auth.dto.request.ChangePasswordRequest;
 import com.developerplatform.auth.dto.response.LoginResponse;
 import com.developerplatform.auth.dto.response.RegisterResponse;
 import com.developerplatform.auth.entity.User;
@@ -190,5 +192,47 @@ public class AuthServiceImpl implements AuthService {
                 .lastName(user.getLastName())
                 .email(user.getEmail())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateProfile(UUID userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "User not found"
+                ));
+
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        
+        User savedUser = userRepository.save(user);
+
+        return UserResponse.builder()
+                .id(savedUser.getId())
+                .firstName(savedUser.getFirstName())
+                .lastName(savedUser.getLastName())
+                .email(savedUser.getEmail())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(UUID userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "User not found"
+                ));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+            throw new BadRequestException(
+                    ErrorCode.BAD_REQUEST,
+                    "Current password is incorrect"
+            );
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 }

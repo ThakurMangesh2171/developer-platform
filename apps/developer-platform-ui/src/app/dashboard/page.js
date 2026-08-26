@@ -9,6 +9,7 @@ import Link from 'next/link';
 export default function DashboardOverview() {
   const { activeWorkspace, setActiveWorkspace, workspaces, setWorkspaces, user, isLoading: contextLoading } = useAppContext();
   const [projects, setProjects] = useState([]);
+  const [stats, setStats] = useState({ totalProjects: 0, totalApiKeys: 0, totalShortenedUrls: 0, totalUrlClicks: 0 });
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [error, setError] = useState(null);
 
@@ -25,11 +26,19 @@ export default function DashboardOverview() {
     setError(null);
     
     try {
-      const response = await apiFetch(`${API_ENDPOINTS.PROJECT.BASE}?workspaceId=${activeWorkspace.id}`);
-      if (response.success) {
-        setProjects(response.data);
+      const [projectsResponse, statsResponse] = await Promise.all([
+        apiFetch(`${API_ENDPOINTS.PROJECT.BASE}?workspaceId=${activeWorkspace.id}`),
+        apiFetch(API_ENDPOINTS.WORKSPACE.STATS(activeWorkspace.id))
+      ]);
+      
+      if (projectsResponse.success) {
+        setProjects(projectsResponse.data);
       } else {
-        setError(response.message || 'Failed to fetch projects');
+        setError(projectsResponse.message || 'Failed to fetch projects');
+      }
+      
+      if (statsResponse.success && statsResponse.data) {
+        setStats(statsResponse.data);
       }
     } catch (err) {
       setError(err.message || 'Network error');
@@ -187,6 +196,36 @@ export default function DashboardOverview() {
           {error}
         </div>
       )}
+
+      {/* Stats Overview */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '24px',
+        marginBottom: '40px'
+      }}>
+        {[
+          { label: 'Total Projects', value: stats.totalProjects, icon: '&#x1F4C2;', color: 'var(--accent-primary)' },
+          { label: 'API Keys', value: stats.totalApiKeys, icon: '&#x1F5DD;', color: '#10B981' },
+          { label: 'Shortened URLs', value: stats.totalShortenedUrls, icon: '&#x1F517;', color: '#F59E0B' },
+          { label: 'URL Clicks', value: stats.totalUrlClicks, icon: '&#x1F5B1;', color: '#3B82F6' }
+        ].map((stat, idx) => (
+          <div key={idx} className="glass-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ 
+              width: '48px', height: '48px', borderRadius: '12px', background: `${stat.color}15`, 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: stat.color
+            }} dangerouslySetInnerHTML={{ __html: stat.icon }} />
+            <div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px' }}>
+                {stat.label}
+              </p>
+              <h3 style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: '4px' }}>
+                {stat.value}
+              </h3>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>Projects</h2>
 
