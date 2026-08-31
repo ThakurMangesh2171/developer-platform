@@ -20,5 +20,7 @@ public class CreateUrlRequest {
 
     private String title;
 
+    private String customAlias;
+
     private LocalDateTime expiresAt;
 }

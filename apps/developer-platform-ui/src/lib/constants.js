@@ -11,6 +11,7 @@ export const API_ENDPOINTS = {
   WORKSPACE: {
     BASE: '/api/v1/workspaces',
     STATS: (id) => `/api/v1/workspaces/${id}/stats`,
+    MEMBERS: (id) => `/api/v1/workspaces/${id}/members`,
   },
   PROJECT: {
     BASE: '/api/v1/projects',
@@ -23,5 +24,8 @@ export const API_ENDPOINTS = {
   },
   API_KEYS: {
     BASE: '/api/v1/api-keys',
+  },
+  WEBHOOKS: {
+    BASE: (projectId) => `/api/v1/projects/${projectId}/webhooks`,
   }
 };

@@ -1,5 +1,7 @@
 package com.developerplatform.security;
 
+import com.developerplatform.analytics.service.interfaces.RateLimitingService;
+import com.developerplatform.analytics.service.interfaces.UsageAnalyticsService;
 import com.developerplatform.apikey.entity.ApiKey;
 import com.developerplatform.apikey.enums.ApiKeyStatus;
 import com.developerplatform.apikey.repository.ApiKeyRepository;
@@ -26,6 +28,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private static final String API_KEY_HEADER = "X-API-Key";
 
     private final ApiKeyRepository apiKeyRepository;
+    private final RateLimitingService rateLimitingService;
+    private final UsageAnalyticsService usageAnalyticsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -34,6 +38,14 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             String rawApiKey = getApiKeyFromRequest(request);
 
             if (StringUtils.hasText(rawApiKey)) {
+                
+                // 1. Check Rate Limit
+                if (!rateLimitingService.isAllowed(rawApiKey)) {
+                    response.setStatus(429); // Too Many Requests
+                    response.getWriter().write("Rate limit exceeded for API Key");
+                    return;
+                }
+
                 String prefix = ApiKeyUtils.extractPrefix(rawApiKey);
                 Optional<ApiKey> apiKeyOpt = apiKeyRepository.findByKeyPrefixAndStatusAndDeletedAtIsNull(prefix, ApiKeyStatus.ACTIVE);
 
@@ -42,6 +54,9 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                     String hash = ApiKeyUtils.hashKey(rawApiKey);
 
                     if (hash.equals(apiKey.getKeyHash())) {
+                        // 2. Track Usage
+                        usageAnalyticsService.trackRequest(apiKey.getProjectId());
+                        
                         ApiKeyAuthenticationToken authentication = new ApiKeyAuthenticationToken(apiKey.getProjectId(), prefix);
                         SecurityContextHolder.getContext().setAuthentication(authentication);
                     } else {

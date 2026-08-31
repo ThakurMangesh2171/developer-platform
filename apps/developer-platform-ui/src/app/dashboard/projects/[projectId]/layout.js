@@ -10,7 +10,9 @@ export default function ProjectLayout({ children, params }) {
   // Derive the active tab based on the URL path
   const isUrlShortener = pathname.includes('/url-shortener');
   const isFeatureFlags = pathname.includes('/feature-flags');
-  const isApiKeys = !isUrlShortener && !isFeatureFlags;
+  const isApiKeys = pathname.includes('/api-keys');
+  const isWebhooks = pathname.includes('/webhooks');
+  const isOverview = !isUrlShortener && !isFeatureFlags && !isApiKeys && !isWebhooks;
   
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -20,13 +22,25 @@ export default function ProjectLayout({ children, params }) {
           href={`/dashboard/projects/${projectId}`}
           style={{
             padding: '12px 0',
+            color: isOverview ? 'var(--accent-primary)' : 'var(--text-secondary)',
+            borderBottom: isOverview ? '2px solid var(--accent-primary)' : '2px solid transparent',
+            fontWeight: isOverview ? '600' : '400',
+            fontSize: '15px'
+          }}
+        >
+          Overview
+        </Link>
+        <Link 
+          href={`/dashboard/projects/${projectId}/api-keys`}
+          style={{
+            padding: '12px 0',
             color: isApiKeys ? 'var(--accent-primary)' : 'var(--text-secondary)',
             borderBottom: isApiKeys ? '2px solid var(--accent-primary)' : '2px solid transparent',
             fontWeight: isApiKeys ? '600' : '400',
             fontSize: '15px'
           }}
         >
-          API Keys (Settings)
+          API Keys
         </Link>
         
         <Link 
@@ -53,6 +67,19 @@ export default function ProjectLayout({ children, params }) {
           }}
         >
           Feature Flags
+        </Link>
+        
+        <Link 
+          href={`/dashboard/projects/${projectId}/webhooks`}
+          style={{
+            padding: '12px 0',
+            color: isWebhooks ? 'var(--accent-primary)' : 'var(--text-secondary)',
+            borderBottom: isWebhooks ? '2px solid var(--accent-primary)' : '2px solid transparent',
+            fontWeight: isWebhooks ? '600' : '400',
+            fontSize: '15px'
+          }}
+        >
+          Webhooks
         </Link>
       </div>
 
