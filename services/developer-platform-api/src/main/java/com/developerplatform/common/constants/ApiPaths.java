@@ -11,6 +11,9 @@ public final class ApiPaths {
      * Authentication
      */
     public static final String AUTH = API_V1 + "/auth";
+    public static final String REGISTER = "/register";
+    public static final String LOGIN = "/login";
+    public static final String VERIFY_EMAIL = "/verify-email";
 
     /*
      * Users
@@ -31,5 +34,15 @@ public final class ApiPaths {
      * API Keys
      */
     public static final String API_KEYS = API_V1 + "/api-keys";
+
+    /*
+     * URL Shortener
+     */
+    public static final String URLS = API_V1 + "/urls";
+
+    /*
+     * Feature Flags
+     */
+    public static final String FEATURE_FLAGS = API_V1 + "/feature-flags";
 
 }

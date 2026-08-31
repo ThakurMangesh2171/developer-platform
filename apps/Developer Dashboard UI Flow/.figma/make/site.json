@@ -1,0 +1,10 @@
+{
+  "description": "Manage software projects, API keys, and URL shortening with real-time analytics in a sleek developer dashboard designed for efficient workflow control.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
