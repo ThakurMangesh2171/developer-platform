@@ -9,6 +9,7 @@ import com.developerplatform.featureflag.entity.FeatureFlag;
 import com.developerplatform.featureflag.mapper.FeatureFlagMapper;
 import com.developerplatform.featureflag.repository.FeatureFlagRepository;
 import com.developerplatform.featureflag.service.interfaces.FeatureFlagService;
+import com.developerplatform.webhook.service.WebhookService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
 
     private final FeatureFlagRepository featureFlagRepository;
     private final FeatureFlagMapper featureFlagMapper;
+    private final WebhookService webhookService;
 
     @Override
     @Transactional
@@ -38,7 +40,9 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
         FeatureFlag flag = featureFlagMapper.toEntity(request, projectId);
         FeatureFlag savedFlag = featureFlagRepository.save(flag);
         
-        return featureFlagMapper.toResponse(savedFlag);
+        FeatureFlagResponse response = featureFlagMapper.toResponse(savedFlag);
+        webhookService.dispatchEvent(projectId, "feature_flag.created", response);
+        return response;
     }
 
     @Override
@@ -74,7 +78,9 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
         flag.setEnabled(!flag.isEnabled());
         FeatureFlag savedFlag = featureFlagRepository.save(flag);
         
-        return featureFlagMapper.toResponse(savedFlag);
+        FeatureFlagResponse response = featureFlagMapper.toResponse(savedFlag);
+        webhookService.dispatchEvent(projectId, "feature_flag.toggled", response);
+        return response;
     }
 
     @Override

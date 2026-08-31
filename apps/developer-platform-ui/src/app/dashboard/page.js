@@ -182,13 +182,22 @@ export default function DashboardOverview() {
           </p>
         </div>
         
-        <button 
-          className="glow-button" 
-          onClick={() => setShowProjectModal(true)}
-          style={{ padding: '10px 20px', width: 'auto' }}
-        >
-          + New Project
-        </button>
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <Link href={`/dashboard/workspaces/${activeWorkspace.id}/settings`}>
+            <button 
+              style={{ padding: '10px 20px', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}
+            >
+              Workspace Settings
+            </button>
+          </Link>
+          <button 
+            className="glow-button" 
+            onClick={() => setShowProjectModal(true)}
+            style={{ padding: '10px 20px', width: 'auto' }}
+          >
+            + New Project
+          </button>
+        </div>
       </div>
 
       {error && (

@@ -2,175 +2,144 @@
 
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
-import { API_ENDPOINTS } from '@/lib/constants';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Activity, Zap } from 'lucide-react';
 
-export default function ProjectApiKeysPage({ params }) {
+export default function ProjectOverviewPage({ params }) {
   const { projectId } = params;
   
-  const [apiKeys, setApiKeys] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [newKey, setNewKey] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchApiKeys();
+    fetchAnalytics();
   }, [projectId]);
 
-  const fetchApiKeys = async () => {
+  const fetchAnalytics = async () => {
     setIsLoading(true);
     try {
-      const response = await apiFetch(`${API_ENDPOINTS.API_KEYS.BASE}?projectId=${projectId}`);
-      if (response.success) {
-        setApiKeys(response.data);
+      const response = await apiFetch(`/api/v1/projects/${projectId}/analytics`);
+      if (response) {
+        setAnalytics(response);
       } else {
-        setError(response.message || 'Failed to fetch API keys');
+        setError('Failed to load analytics data.');
       }
     } catch (err) {
-      setError('Network error loading API keys');
+      setError('Network error while loading analytics.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGenerateKey = async () => {
-    setIsGenerating(true);
-    setError(null);
-    setNewKey(null);
-    try {
-      // Hardcode a default name for now
-      const response = await apiFetch(API_ENDPOINTS.API_KEYS.BASE, {
-        method: 'POST',
-        body: JSON.stringify({
-          projectId: projectId,
-          name: `API Key - ${new Date().getTime()}`
-        })
-      });
+  if (isLoading) {
+    return <div style={{ color: 'var(--text-secondary)' }}>Loading analytics dashboard...</div>;
+  }
 
-      if (response.success) {
-        setNewKey(response.data.rawKey);
-        fetchApiKeys(); // Refresh the list
-      } else {
-        setError(response.message || 'Failed to generate API key');
-      }
-    } catch (err) {
-      setError('Network error generating key');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleRevokeKey = async (keyId) => {
-    if (!confirm('Are you sure you want to revoke this API key? Any applications using it will immediately lose access.')) return;
-    
-    try {
-      const response = await apiFetch(`${API_ENDPOINTS.API_KEYS.BASE}/${keyId}`, {
-        method: 'DELETE'
-      });
-      if (response.success) {
-        fetchApiKeys(); // Refresh list
-      } else {
-        setError(response.message || 'Failed to revoke API key');
-      }
-    } catch (err) {
-      setError('Network error revoking API key');
-    }
-  };
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-        <div>
-          <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>API Keys</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', maxWidth: '600px' }}>
-            These keys grant full access to your project's microservices (like the URL Shortener). 
-            Do not share them in publicly accessible areas such as GitHub, client-side code, and so forth.
-          </p>
-        </div>
-        <button 
-          className="glow-button" 
-          onClick={handleGenerateKey} 
-          disabled={isGenerating}
-          style={{ padding: '10px 20px', width: 'auto', opacity: isGenerating ? 0.7 : 1 }}
-        >
-          {isGenerating ? 'Generating...' : '+ Generate New Key'}
-        </button>
+  if (error) {
+    return (
+      <div style={{ padding: '16px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--error)', border: '1px solid var(--error)', borderRadius: '8px' }}>
+        {error}
       </div>
+    );
+  }
 
-      {error && (
-        <div style={{ padding: '16px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--error)', border: '1px solid var(--error)', borderRadius: '8px', marginBottom: '24px' }}>
-          {error}
-        </div>
-      )}
-
-      {/* Show newly generated key prominently (only once) */}
-      {newKey && (
-        <div style={{ padding: '24px', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid var(--success)', borderRadius: '8px', marginBottom: '32px' }}>
-          <h3 style={{ color: 'var(--success)', fontWeight: 'bold', marginBottom: '12px' }}>&#x2714; New API Key Generated</h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
-            Please copy this key and save it somewhere safe. For security reasons, <strong>we cannot show it to you again.</strong>
-          </p>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <code style={{ flex: 1, padding: '12px', background: '#09090B', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '14px', color: 'var(--text-primary)' }}>
-              {newKey}
-            </code>
-            <button 
-              style={{ padding: '12px 16px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', cursor: 'pointer' }}
-              onClick={() => navigator.clipboard.writeText(newKey)}
-            >
-              Copy
-            </button>
+  // Format data for Recharts (reverse to show chronological order)
+  const chartData = analytics?.usageHistory ? [...analytics.usageHistory].reverse() : [];
+  
+  // Calculate percentage for progress bar
+  const quotaPercentage = analytics ? Math.min(100, Math.round((analytics.totalRequestsUsed / analytics.totalQuota) * 100)) : 0;
+  
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+        
+        {/* Total Requests Card */}
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '10px', borderRadius: '8px', color: 'var(--success)' }}>
+              <Activity size={24} />
+            </div>
+            <h3 style={{ fontSize: '16px', fontWeight: '500', color: 'var(--text-secondary)' }}>Requests This Month</h3>
+          </div>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+            {analytics?.totalRequestsUsed.toLocaleString()}
           </div>
         </div>
-      )}
 
-      <div className="glass-card" style={{ overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
-              <th style={{ padding: '16px 24px', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: '600' }}>Name</th>
-              <th style={{ padding: '16px 24px', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: '600' }}>Key Preview</th>
-              <th style={{ padding: '16px 24px', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: '600' }}>Created At</th>
-              <th style={{ padding: '16px 24px', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: '600', textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan="4" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading keys...</td>
-              </tr>
-            ) : apiKeys.length === 0 ? (
-              <tr>
-                <td colSpan="4" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  No API keys found. Generate one to get started.
-                </td>
-              </tr>
-            ) : (
-              apiKeys.map(key => (
-                <tr key={key.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '500' }}>{key.name}</td>
-                  <td style={{ padding: '16px 24px' }}>
-                    <code style={{ background: '#09090B', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      {key.keyPrefix}••••••••••••••••
-                    </code>
-                  </td>
-                  <td style={{ padding: '16px 24px', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                    {new Date(key.createdAt).toLocaleDateString()}
-                  </td>
-                  <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                    <button 
-                      style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
-                      onClick={() => handleRevokeKey(key.id)}
-                    >
-                      Revoke
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        {/* Quota Usage Card */}
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '10px', borderRadius: '8px', color: '#3b82f6' }}>
+                <Zap size={24} />
+              </div>
+              <h3 style={{ fontSize: '16px', fontWeight: '500', color: 'var(--text-secondary)' }}>Quota Usage</h3>
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)' }}>
+              {quotaPercentage}%
+            </div>
+          </div>
+          <div>
+            <div style={{ width: '100%', height: '8px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ 
+                width: `${quotaPercentage}%`, 
+                height: '100%', 
+                background: quotaPercentage > 90 ? 'var(--error)' : 'linear-gradient(90deg, #3b82f6, #10b981)',
+                borderRadius: '4px',
+                transition: 'width 1s ease-in-out'
+              }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              <span>{analytics?.totalRequestsUsed.toLocaleString()} used</span>
+              <span>{analytics?.totalQuota.toLocaleString()} limit</span>
+            </div>
+          </div>
+        </div>
+
       </div>
+
+      {/* Chart Section */}
+      <div className="glass-card" style={{ padding: '32px' }}>
+        <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '24px' }}>API Usage (Last 7 Days)</h3>
+        <div style={{ height: '350px', width: '100%' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+              <XAxis 
+                dataKey="date" 
+                stroke="var(--text-secondary)" 
+                tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                tickFormatter={(val) => {
+                  const d = new Date(val);
+                  return `${d.getMonth()+1}/${d.getDate()}`;
+                }}
+              />
+              <YAxis 
+                stroke="var(--text-secondary)" 
+                tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip 
+                contentStyle={{ background: '#09090B', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff' }}
+                itemStyle={{ color: 'var(--accent-primary)' }}
+                labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px' }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="requests" 
+                stroke="var(--accent-primary)" 
+                strokeWidth={3}
+                dot={{ r: 4, fill: '#09090B', stroke: 'var(--accent-primary)', strokeWidth: 2 }}
+                activeDot={{ r: 6, fill: 'var(--accent-primary)', stroke: '#fff' }}
+                animationDuration={1500}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      
     </div>
   );
 }

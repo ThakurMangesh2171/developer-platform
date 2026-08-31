@@ -5,6 +5,8 @@ import com.developerplatform.common.exception.ResourceNotFoundException;
 import com.developerplatform.urlshortener.dto.request.CreateUrlRequest;
 import com.developerplatform.urlshortener.dto.response.ShortenedUrlResponse;
 import com.developerplatform.urlshortener.entity.ShortenedUrl;
+import com.developerplatform.urlshortener.entity.UrlClick;
+import com.developerplatform.urlshortener.repository.UrlClickRepository;
 import com.developerplatform.urlshortener.repository.ShortenedUrlRepository;
 import com.developerplatform.urlshortener.service.interfaces.UrlShortenerService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,13 +26,23 @@ import java.util.stream.Collectors;
 public class UrlShortenerServiceImpl implements UrlShortenerService {
 
     private final ShortenedUrlRepository shortenedUrlRepository;
+    private final UrlClickRepository urlClickRepository;
+    
     private static final String BASE62_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     @Override
     @Transactional
     public ShortenedUrlResponse createShortUrl(UUID projectId, CreateUrlRequest request, String baseUrl) {
-        String shortCode = generateUniqueShortCode();
+        String shortCode;
+        if (request.getCustomAlias() != null && !request.getCustomAlias().trim().isEmpty()) {
+            shortCode = request.getCustomAlias().trim();
+            if (shortenedUrlRepository.findByShortCodeAndDeletedAtIsNull(shortCode).isPresent()) {
+                throw new IllegalArgumentException("Custom alias is already in use.");
+            }
+        } else {
+            shortCode = generateUniqueShortCode();
+        }
         
         if (request.getExpiresAt() != null && request.getExpiresAt().isAfter(java.time.LocalDateTime.now().plusYears(1))) {
             throw new IllegalArgumentException("Expiration date cannot be more than 1 year in the future.");
@@ -48,7 +61,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 
     @Override
     @Transactional
-    public String resolveShortUrl(String shortCode) {
+    public String resolveShortUrl(String shortCode, String ipAddress, String userAgent) {
         ShortenedUrl shortenedUrl = shortenedUrlRepository.findByShortCodeAndDeletedAtIsNull(shortCode)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Short URL not found for code: " + shortCode));
         
@@ -56,6 +69,15 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
             throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "This short URL has expired.");
         }
         
+        // Save analytics
+        UrlClick click = UrlClick.builder()
+                .shortenedUrlId(shortenedUrl.getId())
+                .ipAddress(ipAddress != null && ipAddress.length() > 45 ? ipAddress.substring(0, 45) : ipAddress)
+                .userAgent(userAgent)
+                .clickedAt(LocalDateTime.now())
+                .build();
+        urlClickRepository.save(click);
+
         // Increment click count
         shortenedUrl.setClickCount(shortenedUrl.getClickCount() + 1);
         shortenedUrlRepository.save(shortenedUrl);

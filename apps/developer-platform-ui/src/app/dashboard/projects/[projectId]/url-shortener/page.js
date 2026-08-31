@@ -13,13 +13,20 @@ export default function UrlShortenerPage({ params }) {
   const [title, setTitle] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   
+  const [customAlias, setCustomAlias] = useState('');
+  
   const [urls, setUrls] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState(null);
 
-  // Prepare analytics data
-  const chartData = [...urls]
+  // For Analytics Modal
+  const [selectedUrl, setSelectedUrl] = useState(null);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
+
+  // Prepare top performing chart data
+  const topPerformersChartData = [...urls]
     .sort((a, b) => (b.clickCount || 0) - (a.clickCount || 0))
     .slice(0, 5)
     .map(url => ({
@@ -60,6 +67,40 @@ export default function UrlShortenerPage({ params }) {
     }
   };
 
+  const handleFetchAnalytics = async (shortCode) => {
+    if (!apiKey) return;
+    setIsAnalyticsLoading(true);
+    try {
+      const response = await fetch(`${API_ENDPOINTS.URL_SHORTENER.BASE}/${shortCode}/analytics`, {
+        headers: {
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setAnalyticsData(data);
+      } else {
+        alert(data.message || 'Failed to fetch analytics');
+      }
+    } catch (err) {
+      alert('Network error while fetching analytics');
+    } finally {
+      setIsAnalyticsLoading(false);
+    }
+  };
+
+  const openAnalytics = (url) => {
+    setSelectedUrl(url);
+    setAnalyticsData(null);
+    handleFetchAnalytics(url.shortCode);
+  };
+
+  const closeAnalytics = () => {
+    setSelectedUrl(null);
+    setAnalyticsData(null);
+  };
+
   const handleShorten = async (e) => {
     e.preventDefault();
     if (!apiKey) {
@@ -80,6 +121,7 @@ export default function UrlShortenerPage({ params }) {
         body: JSON.stringify({ 
           originalUrl: longUrl, 
           title: title || undefined,
+          customAlias: customAlias || undefined,
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined
         })
       });
@@ -89,6 +131,7 @@ export default function UrlShortenerPage({ params }) {
       if (response.ok) {
         setLongUrl('');
         setTitle('');
+        setCustomAlias('');
         setExpiresAt('');
         handleFetchUrls(); // Refresh the list
       } else {
@@ -142,56 +185,70 @@ export default function UrlShortenerPage({ params }) {
 
       <form onSubmit={handleShorten} className="glass-card" style={{ padding: '24px', marginBottom: '32px', position: 'relative', zIndex: 50 }}>
         <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>Create Short Link</h3>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-          <div style={{ flex: 2 }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>Destination URL</label>
-            <input 
-              type="url" 
-              className="premium-input" 
-              placeholder="https://example.com/very/long/path"
-              value={longUrl}
-              onChange={(e) => setLongUrl(e.target.value)}
-              required
-            />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+            <div style={{ flex: 2 }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>Destination URL</label>
+              <input 
+                type="url" 
+                className="premium-input" 
+                placeholder="https://example.com/very/long/path"
+                value={longUrl}
+                onChange={(e) => setLongUrl(e.target.value)}
+                required
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>Title (Optional)</label>
+              <input 
+                type="text" 
+                className="premium-input" 
+                placeholder="Summer Campaign"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>Title (Optional)</label>
-            <input 
-              type="text" 
-              className="premium-input" 
-              placeholder="Summer Campaign"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>Expires At (Optional)</label>
-            <DatePicker
-              selected={expiresAt ? new Date(expiresAt) : null}
-              onChange={(date) => setExpiresAt(date ? date.toISOString() : '')}
-              showTimeSelect
-              timeFormat="HH:mm"
-              timeIntervals={15}
-              timeCaption="Time"
-              dateFormat="MMMM d, yyyy h:mm aa"
-              minDate={new Date()}
-              maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
-              className="premium-input"
-              placeholderText="Select expiration date"
-              isClearable
-              wrapperClassName="datepicker-wrapper"
-              style={{ width: '100%' }}
-            />
-          </div>
-          <div style={{ marginTop: '29px' }}>
-            <button 
-              type="submit" 
-              className="glow-button" 
-              disabled={isLoading || !apiKey}
-              style={{ padding: '12px 24px', width: 'auto', opacity: (!apiKey || isLoading) ? 0.5 : 1 }}
-            >
-              {isLoading ? 'Shortening...' : 'Shorten'}
-            </button>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>Custom Alias (Optional)</label>
+              <input 
+                type="text" 
+                className="premium-input" 
+                placeholder="my-custom-link"
+                value={customAlias}
+                onChange={(e) => setCustomAlias(e.target.value)}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>Expires At (Optional)</label>
+              <DatePicker
+                selected={expiresAt ? new Date(expiresAt) : null}
+                onChange={(date) => setExpiresAt(date ? date.toISOString() : '')}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                timeCaption="Time"
+                dateFormat="MMMM d, yyyy h:mm aa"
+                minDate={new Date()}
+                maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
+                className="premium-input"
+                placeholderText="Select expiration date"
+                isClearable
+                wrapperClassName="datepicker-wrapper"
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', paddingBottom: '2px' }}>
+              <button 
+                type="submit" 
+                className="glow-button" 
+                disabled={isLoading || !apiKey}
+                style={{ padding: '12px 24px', width: '100%', opacity: (!apiKey || isLoading) ? 0.5 : 1 }}
+              >
+                {isLoading ? 'Shortening...' : 'Shorten URL'}
+              </button>
+            </div>
           </div>
         </div>
       </form>
@@ -224,12 +281,13 @@ export default function UrlShortenerPage({ params }) {
               <th style={{ padding: '16px 24px', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: '600' }}>Original URL</th>
               <th style={{ padding: '16px 24px', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: '600' }}>Expires</th>
               <th style={{ padding: '16px 24px', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: '600', textAlign: 'right' }}>Clicks</th>
+              <th style={{ padding: '16px 24px', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: '600', textAlign: 'center' }}>Analytics</th>
             </tr>
           </thead>
           <tbody>
             {urls.length === 0 ? (
               <tr>
-                <td colSpan="4" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <td colSpan="6" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                   {apiKey ? "No short links found. Create one above!" : "Connect your API key to view short links."}
                 </td>
               </tr>
@@ -251,12 +309,70 @@ export default function UrlShortenerPage({ params }) {
                   <td style={{ padding: '16px 24px', textAlign: 'right', fontWeight: '600' }}>
                     {url.clickCount || 0}
                   </td>
+                  <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                    <button 
+                      onClick={() => openAnalytics(url)}
+                      style={{ background: 'transparent', border: '1px solid var(--accent-primary)', color: 'var(--accent-primary)', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}
+                    >
+                      View
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {selectedUrl && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="glass-card" style={{ padding: '32px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+            <button 
+              onClick={closeAnalytics}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '24px', cursor: 'pointer' }}
+            >
+              &times;
+            </button>
+            
+            <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>URL Analytics</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
+              {selectedUrl.title ? `${selectedUrl.title} (${selectedUrl.shortUrl})` : selectedUrl.shortUrl}
+            </p>
+
+            {isAnalyticsLoading ? (
+              <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading analytics data...</div>
+            ) : analyticsData ? (
+              <div>
+                <div style={{ display: 'flex', gap: '24px', marginBottom: '32px' }}>
+                  <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px 24px', borderRadius: '8px', border: '1px solid var(--border-color)', flex: 1 }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '8px' }}>Total Clicks</div>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>{analyticsData.totalClicks}</div>
+                  </div>
+                </div>
+                
+                <h4 style={{ fontSize: '16px', fontWeight: '500', marginBottom: '16px' }}>Clicks Over Time (Last 30 Days)</h4>
+                <div style={{ height: '300px', width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analyticsData.clicksOverTime || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="date" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <Tooltip 
+                        cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                        contentStyle={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }}
+                        formatter={(value) => [`${value} clicks`, 'Clicks']}
+                        labelFormatter={(label) => `Date: ${label}`}
+                      />
+                      <Bar dataKey="clicks" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '48px', textAlign: 'center', color: 'var(--error)' }}>Failed to load analytics data.</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

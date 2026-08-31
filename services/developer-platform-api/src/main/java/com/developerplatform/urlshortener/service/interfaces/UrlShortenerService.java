@@ -10,7 +10,7 @@ public interface UrlShortenerService {
 
     ShortenedUrlResponse createShortUrl(UUID projectId, CreateUrlRequest request, String baseUrl);
 
-    String resolveShortUrl(String shortCode);
+    String resolveShortUrl(String shortCode, String ipAddress, String userAgent);
 
     List<ShortenedUrlResponse> getProjectUrls(UUID projectId, String baseUrl);
 }
