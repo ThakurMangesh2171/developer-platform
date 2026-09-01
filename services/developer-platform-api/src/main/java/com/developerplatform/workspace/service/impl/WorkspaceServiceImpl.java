@@ -49,13 +49,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public WorkspaceResponse createWorkspace(UUID userId, CreateWorkspaceRequest request) {
-        if (workspaceRepository.existsByUserIdAndNameAndStatusNot(userId, request.getName(), WorkspaceStatus.ARCHIVED)) {
-            throw new ConflictException(
-                    ErrorCode.WORKSPACE_ALREADY_EXISTS,
-                    WorkspaceMessages.WORKSPACE_ALREADY_EXISTS
-            );
-        }
-
         Workspace workspace = WorkspaceMapper.toEntity(request, userId);
         Workspace savedWorkspace = workspaceRepository.save(workspace);
         
@@ -107,16 +100,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         ErrorCode.WORKSPACE_NOT_FOUND,
                         WorkspaceMessages.WORKSPACE_NOT_FOUND
                 ));
-
-        // If the name has changed, verify uniqueness
-        if (!workspace.getName().equalsIgnoreCase(request.getName())) {
-            if (workspaceRepository.existsByUserIdAndNameAndStatusNot(userId, request.getName(), WorkspaceStatus.ARCHIVED)) {
-                throw new ConflictException(
-                        ErrorCode.WORKSPACE_ALREADY_EXISTS,
-                        WorkspaceMessages.WORKSPACE_ALREADY_EXISTS
-                );
-            }
-        }
 
         workspace.setName(request.getName());
         workspace.setDescription(request.getDescription());

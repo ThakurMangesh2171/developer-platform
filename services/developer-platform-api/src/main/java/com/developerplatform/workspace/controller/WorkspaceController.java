@@ -9,6 +9,7 @@ import com.developerplatform.workspace.dto.request.UpdateWorkspaceRequest;
 import com.developerplatform.workspace.dto.response.WorkspaceResponse;
 import com.developerplatform.workspace.dto.response.WorkspaceStatsResponse;
 import com.developerplatform.workspace.service.interfaces.WorkspaceService;
+import com.developerplatform.workspace.utils.WorkspaceValidationUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -34,12 +35,14 @@ public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
     private final java.time.Clock clock;
+    private final WorkspaceValidationUtils workspaceValidationUtils;
 
     @PostMapping
     public ResponseEntity<ApiResponse<WorkspaceResponse>> createWorkspace(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody CreateWorkspaceRequest request) {
 
+        workspaceValidationUtils.validateWorkspaceNameForCreation(principal.getId(), request.getName());
         WorkspaceResponse responseData = workspaceService.createWorkspace(principal.getId(), request);
 
         ApiResponse<WorkspaceResponse> response = ApiResponse.<WorkspaceResponse>builder()
@@ -93,6 +96,7 @@ public class WorkspaceController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateWorkspaceRequest request) {
 
+        workspaceValidationUtils.validateWorkspaceNameForUpdate(principal.getId(), id, request.getName());
         WorkspaceResponse responseData = workspaceService.updateWorkspace(principal.getId(), id, request);
 
         ApiResponse<WorkspaceResponse> response = ApiResponse.<WorkspaceResponse>builder()
