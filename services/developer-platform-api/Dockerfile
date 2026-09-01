@@ -15,6 +15,12 @@ WORKDIR /app
 # Copy the built jar file
 COPY --from=build /app/target/*.jar app.jar
 
+# Create a non-root user and group, and change ownership of the app directory
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app
+# Switch to the non-root user
+USER appuser
+
 # Expose the application port
 EXPOSE 8080
 

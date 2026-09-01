@@ -1,7 +1,7 @@
 package com.developerplatform.featureflag.service.impl;
 
+import com.developerplatform.common.constants.messages.FeatureFlagMessages;
 import com.developerplatform.common.enums.ErrorCode;
-import com.developerplatform.common.exception.ConflictException;
 import com.developerplatform.common.exception.ResourceNotFoundException;
 import com.developerplatform.featureflag.dto.request.CreateFeatureFlagRequest;
 import com.developerplatform.featureflag.dto.response.FeatureFlagResponse;
@@ -26,17 +26,11 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
     private final FeatureFlagRepository featureFlagRepository;
     private final FeatureFlagMapper featureFlagMapper;
     private final WebhookService webhookService;
+    private final java.time.Clock clock;
 
     @Override
     @Transactional
     public FeatureFlagResponse createFeatureFlag(UUID projectId, CreateFeatureFlagRequest request) {
-        if (featureFlagRepository.existsByProjectIdAndKeyAndDeletedAtIsNull(projectId, request.getKey())) {
-            throw new ConflictException(
-                    ErrorCode.BAD_REQUEST,
-                    "A feature flag with this key already exists in this project."
-            );
-        }
-
         FeatureFlag flag = featureFlagMapper.toEntity(request, projectId);
         FeatureFlag savedFlag = featureFlagRepository.save(flag);
         
@@ -51,7 +45,7 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
         return featureFlagRepository.findByProjectIdAndDeletedAtIsNull(projectId)
                 .stream()
                 .map(featureFlagMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -60,7 +54,7 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
         FeatureFlag flag = featureFlagRepository.findByProjectIdAndKeyAndDeletedAtIsNull(projectId, key)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.RESOURCE_NOT_FOUND,
-                        "Feature flag not found"
+                        FeatureFlagMessages.FLAG_NOT_FOUND
                 ));
                 
         return featureFlagMapper.toResponse(flag);
@@ -72,7 +66,7 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
         FeatureFlag flag = featureFlagRepository.findByProjectIdAndKeyAndDeletedAtIsNull(projectId, key)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.RESOURCE_NOT_FOUND,
-                        "Feature flag not found"
+                        FeatureFlagMessages.FLAG_NOT_FOUND
                 ));
                 
         flag.setEnabled(!flag.isEnabled());
@@ -89,10 +83,10 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
         FeatureFlag flag = featureFlagRepository.findByIdAndProjectIdAndDeletedAtIsNull(flagId, projectId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.RESOURCE_NOT_FOUND,
-                        "Feature flag not found"
+                        FeatureFlagMessages.FLAG_NOT_FOUND
                 ));
                 
-        flag.setDeletedAt(LocalDateTime.now());
+        flag.setDeletedAt(LocalDateTime.now(clock));
         featureFlagRepository.save(flag);
     }
 }

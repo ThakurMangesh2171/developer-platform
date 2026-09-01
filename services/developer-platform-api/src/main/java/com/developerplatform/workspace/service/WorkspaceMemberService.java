@@ -2,9 +2,13 @@ package com.developerplatform.workspace.service;
 
 import com.developerplatform.auth.entity.User;
 import com.developerplatform.auth.repository.UserRepository;
+import com.developerplatform.common.constants.messages.UserMessages;
+import com.developerplatform.common.constants.messages.WorkspaceMessages;
 import com.developerplatform.common.enums.ErrorCode;
 import com.developerplatform.common.exception.ConflictException;
 import com.developerplatform.common.exception.ResourceNotFoundException;
+import com.developerplatform.notification.enums.NotificationType;
+import com.developerplatform.notification.service.NotificationService;
 import com.developerplatform.workspace.dto.InviteMemberRequest;
 import com.developerplatform.workspace.dto.WorkspaceMemberResponse;
 import com.developerplatform.workspace.entity.Workspace;
@@ -18,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -30,6 +35,8 @@ public class WorkspaceMemberService {
     private final WorkspaceRepository workspaceRepository;
     private final UserRepository userRepository;
     private final WorkspaceSecurityService workspaceSecurityService;
+    private final NotificationService notificationService;
+    private final java.time.Clock clock;
 
     @Transactional(readOnly = true)
     public List<WorkspaceMemberResponse> getMembers(UUID workspaceId, UUID currentUserId) {
@@ -37,7 +44,7 @@ public class WorkspaceMemberService {
 
         return workspaceMemberRepository.findByWorkspaceIdAndDeletedAtIsNull(workspaceId).stream()
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional
@@ -67,7 +74,17 @@ public class WorkspaceMemberService {
                 .status(WorkspaceMemberStatus.ACTIVE) // Auto-accepting for MVP
                 .build();
 
-        return mapToResponse(workspaceMemberRepository.save(newMember));
+        WorkspaceMember savedMember = workspaceMemberRepository.save(newMember);
+        
+        // Trigger notification
+        notificationService.createNotification(
+                invitee.getId(),
+                "Workspace Invitation",
+                "You have been invited to join the workspace: " + workspace.getName(),
+                NotificationType.INVITE
+        );
+
+        return mapToResponse(savedMember);
     }
 
     @Transactional
@@ -78,7 +95,7 @@ public class WorkspaceMemberService {
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found"));
                 
         if (!memberToUpdate.getWorkspace().getId().equals(workspaceId) || memberToUpdate.getDeletedAt() != null) {
-            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found in this workspace");
+            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, WorkspaceMessages.MEMBER_NOT_FOUND);
         }
         
         // Prevent removing the last admin (basic check, could be more robust)
@@ -87,7 +104,7 @@ public class WorkspaceMemberService {
                     .filter(m -> m.getRole() == WorkspaceRole.ADMIN)
                     .count();
             if (adminCount <= 1) {
-                throw new ConflictException(ErrorCode.BAD_REQUEST, "Cannot remove the last admin of a workspace");
+                throw new ConflictException(ErrorCode.BAD_REQUEST, WorkspaceMessages.CANNOT_REMOVE_LAST_ADMIN);
             }
         }
 
@@ -103,7 +120,7 @@ public class WorkspaceMemberService {
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found"));
                 
         if (!memberToRemove.getWorkspace().getId().equals(workspaceId) || memberToRemove.getDeletedAt() != null) {
-            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found in this workspace");
+            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, WorkspaceMessages.MEMBER_NOT_FOUND);
         }
         
         // Prevent removing the last admin
@@ -112,11 +129,11 @@ public class WorkspaceMemberService {
                     .filter(m -> m.getRole() == WorkspaceRole.ADMIN)
                     .count();
             if (adminCount <= 1) {
-                throw new ConflictException(ErrorCode.BAD_REQUEST, "Cannot remove the last admin of a workspace");
+                throw new ConflictException(ErrorCode.BAD_REQUEST, WorkspaceMessages.CANNOT_REMOVE_LAST_ADMIN);
             }
         }
 
-        memberToRemove.setDeletedAt(java.time.LocalDateTime.now());
+        memberToRemove.setDeletedAt(LocalDateTime.now(clock));
         workspaceMemberRepository.save(memberToRemove);
     }
 

@@ -29,6 +29,7 @@ public class UsageAnalyticsServiceImpl implements UsageAnalyticsService {
     private final RedisTemplate<String, String> redisTemplate;
     private final ShortenedUrlRepository shortenedUrlRepository;
     private final UrlClickRepository urlClickRepository;
+    private final java.time.Clock clock;
     
     private static final long FREE_TIER_QUOTA = 10000; // 10k requests per month
 
@@ -38,7 +39,7 @@ public class UsageAnalyticsServiceImpl implements UsageAnalyticsService {
             return;
         }
 
-        String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        String today = LocalDate.now(clock).format(DateTimeFormatter.ISO_LOCAL_DATE);
         String redisKey = "usage:" + projectId + ":" + today;
 
         try {
@@ -58,11 +59,11 @@ public class UsageAnalyticsServiceImpl implements UsageAnalyticsService {
         long totalRequestsThisMonth = 0;
         long totalUrlClicksThisMonth = 0;
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE;
         
         List<UUID> shortUrlIds = shortenedUrlRepository.findByProjectIdAndDeletedAtIsNull(projectId)
-                .stream().map(ShortenedUrl::getId).collect(Collectors.toList());
+                .stream().map(ShortenedUrl::getId).toList();
 
         // Fetch data for the last 7 days for the chart
         for (int i = 6; i >= 0; i--) {

@@ -3,7 +3,6 @@ package com.developerplatform.project.service.impl;
 import com.developerplatform.common.enums.ErrorCode;
 import com.developerplatform.common.constants.messages.ProjectMessages;
 import com.developerplatform.common.constants.messages.WorkspaceMessages;
-import com.developerplatform.common.exception.ConflictException;
 import com.developerplatform.common.exception.ResourceNotFoundException;
 import com.developerplatform.project.dto.request.CreateProjectRequest;
 import com.developerplatform.project.dto.request.UpdateProjectRequest;
@@ -39,18 +38,12 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRepository projectRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final java.time.Clock clock;
 
     @Override
     @Transactional
     public ProjectResponse createProject(UUID userId, CreateProjectRequest request) {
         validateWorkspaceAccess(userId, request.getWorkspaceId(), List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
-
-        if (projectRepository.existsByWorkspaceIdAndNameAndStatusNot(request.getWorkspaceId(), request.getName(), ProjectStatus.ARCHIVED)) {
-            throw new ConflictException(
-                    ErrorCode.PROJECT_ALREADY_EXISTS,
-                    ProjectMessages.PROJECT_ALREADY_EXISTS
-            );
-        }
 
         Project project = ProjectMapper.toEntity(request);
         Project savedProject = projectRepository.save(project);
@@ -73,7 +66,7 @@ public class ProjectServiceImpl implements ProjectService {
         List<Project> projects = projectRepository.findByWorkspaceIdAndStatusNot(workspaceId, ProjectStatus.ARCHIVED);
         return projects.stream()
                 .map(ProjectMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -81,16 +74,6 @@ public class ProjectServiceImpl implements ProjectService {
     @CachePut(value = CacheConfig.PROJECT_CACHE, key = "#projectId")
     public ProjectResponse updateProject(UUID userId, UUID projectId, UpdateProjectRequest request) {
         Project project = getProjectAndValidateAccess(userId, projectId, List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
-
-        // If name has changed, verify uniqueness within the workspace
-        if (!project.getName().equalsIgnoreCase(request.getName())) {
-            if (projectRepository.existsByWorkspaceIdAndNameAndStatusNot(project.getWorkspaceId(), request.getName(), ProjectStatus.ARCHIVED)) {
-                throw new ConflictException(
-                        ErrorCode.PROJECT_ALREADY_EXISTS,
-                        ProjectMessages.PROJECT_ALREADY_EXISTS
-                );
-            }
-        }
 
         project.setName(request.getName());
         project.setDescription(request.getDescription());
@@ -105,7 +88,7 @@ public class ProjectServiceImpl implements ProjectService {
         Project project = getProjectAndValidateAccess(userId, projectId, List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
 
         project.setStatus(ProjectStatus.ARCHIVED);
-        project.setDeletedAt(LocalDateTime.now());
+        project.setDeletedAt(LocalDateTime.now(clock));
         projectRepository.save(project);
     }
 

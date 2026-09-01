@@ -32,6 +32,7 @@ import java.util.UUID;
 public class ApiKeyController {
 
     private final ApiKeyService apiKeyService;
+    private final java.time.Clock clock;
 
     @PostMapping
     public ResponseEntity<ApiResponse<CreateApiKeyResponse>> createApiKey(
@@ -44,7 +45,7 @@ public class ApiKeyController {
                 .success(true)
                 .message(ApiKeyMessages.API_KEY_CREATED)
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity
@@ -63,7 +64,7 @@ public class ApiKeyController {
                 .success(true)
                 .message("API keys retrieved successfully")
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -79,7 +80,7 @@ public class ApiKeyController {
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .success(true)
                 .message(ApiKeyMessages.API_KEY_REVOKED)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);

@@ -89,6 +89,14 @@ services:
     networks:
       - developer-platform-network
 
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: sonarqube
+    ports:
+      - "9000:9000"
+    networks:
+      - developer-platform-network
+
 volumes:
   postgres-data:
     name: developer-platform-postgres-data

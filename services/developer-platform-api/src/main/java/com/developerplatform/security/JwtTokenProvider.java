@@ -8,11 +8,13 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
+
+    private static final String CLAIM_USER_ID = "userId";
 
     @Value("${app.security.jwt.secret}")
     private String secret;
@@ -27,9 +29,9 @@ public class JwtTokenProvider {
         Algorithm algorithm = Algorithm.HMAC256(secret);
         return JWT.create()
                 .withSubject(email)
-                .withClaim("userId", userId.toString())
-                .withIssuedAt(new Date())
-                .withExpiresAt(new Date(System.currentTimeMillis() + accessTokenExpirationMs))
+                .withClaim(CLAIM_USER_ID, userId.toString())
+                .withIssuedAt(Instant.now())
+                .withExpiresAt(Instant.now().plusMillis(accessTokenExpirationMs))
                 .sign(algorithm);
     }
 
@@ -37,9 +39,9 @@ public class JwtTokenProvider {
         Algorithm algorithm = Algorithm.HMAC256(secret);
         return JWT.create()
                 .withSubject(email)
-                .withClaim("userId", userId.toString())
-                .withIssuedAt(new Date())
-                .withExpiresAt(new Date(System.currentTimeMillis() + refreshTokenExpirationMs))
+                .withClaim(CLAIM_USER_ID, userId.toString())
+                .withIssuedAt(Instant.now())
+                .withExpiresAt(Instant.now().plusMillis(refreshTokenExpirationMs))
                 .sign(algorithm);
     }
 
@@ -65,7 +67,7 @@ public class JwtTokenProvider {
         Algorithm algorithm = Algorithm.HMAC256(secret);
         JWTVerifier verifier = JWT.require(algorithm).build();
         DecodedJWT decodedJWT = verifier.verify(token);
-        return UUID.fromString(decodedJWT.getClaim("userId").asString());
+        return UUID.fromString(decodedJWT.getClaim(CLAIM_USER_ID).asString());
     }
 
     public long getAccessTokenExpirationInSeconds() {

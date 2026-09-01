@@ -5,7 +5,12 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install
 
-COPY . .
+COPY src/ ./src/
+COPY public/ ./public/
+COPY next.config.mjs jsconfig.json ./
+
+RUN chown -R node:node /app
+USER node
 
 EXPOSE 3000
 

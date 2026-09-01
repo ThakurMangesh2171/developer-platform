@@ -7,13 +7,15 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class EmailService {
 
+    private static final String SEPARATOR = "==========================================================================";
+
     public void sendVerificationEmail(String toEmail, String token) {
         // In a real production environment, we would inject JavaMailSender
         // and send an actual email via SMTP/SendGrid/SES.
         
         String verificationUrl = "http://localhost:3000/verify-email?token=" + token;
         
-        log.info("==========================================================================");
+        log.info(SEPARATOR);
         log.info("📧 EMAIL SENT (Mock)");
         log.info("To: {}", toEmail);
         log.info("Subject: Please verify your email address");
@@ -21,13 +23,13 @@ public class EmailService {
         log.info("Welcome to Developer Platform!");
         log.info("Please click the link below to verify your email address:");
         log.info("{}", verificationUrl);
-        log.info("==========================================================================");
+        log.info(SEPARATOR);
     }
 
     public void sendPasswordResetEmail(String toEmail, String token) {
         String resetUrl = "http://localhost:3000/reset-password?token=" + token;
         
-        log.info("==========================================================================");
+        log.info(SEPARATOR);
         log.info("📧 EMAIL SENT (Mock)");
         log.info("To: {}", toEmail);
         log.info("Subject: Password Reset Request");
@@ -36,6 +38,6 @@ public class EmailService {
         log.info("Please click the link below to set a new password:");
         log.info("{}", resetUrl);
         log.info("If you did not request this, please ignore this email.");
-        log.info("==========================================================================");
+        log.info(SEPARATOR);
     }
 }

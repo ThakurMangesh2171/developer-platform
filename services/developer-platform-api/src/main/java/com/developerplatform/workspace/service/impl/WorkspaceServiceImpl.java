@@ -44,17 +44,11 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final ProjectRepository projectRepository;
     private final ApiKeyRepository apiKeyRepository;
     private final ShortenedUrlRepository shortenedUrlRepository;
+    private final java.time.Clock clock;
 
     @Override
     @Transactional
     public WorkspaceResponse createWorkspace(UUID userId, CreateWorkspaceRequest request) {
-        if (workspaceRepository.existsByUserIdAndNameAndStatusNot(userId, request.getName(), WorkspaceStatus.ARCHIVED)) {
-            throw new ConflictException(
-                    ErrorCode.WORKSPACE_ALREADY_EXISTS,
-                    WorkspaceMessages.WORKSPACE_ALREADY_EXISTS
-            );
-        }
-
         Workspace workspace = WorkspaceMapper.toEntity(request, userId);
         Workspace savedWorkspace = workspaceRepository.save(workspace);
         
@@ -93,7 +87,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 .map(WorkspaceMember::getWorkspace)
                 .filter(w -> w.getStatus() != WorkspaceStatus.ARCHIVED)
                 .map(WorkspaceMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -106,16 +100,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         ErrorCode.WORKSPACE_NOT_FOUND,
                         WorkspaceMessages.WORKSPACE_NOT_FOUND
                 ));
-
-        // If the name has changed, verify uniqueness
-        if (!workspace.getName().equalsIgnoreCase(request.getName())) {
-            if (workspaceRepository.existsByUserIdAndNameAndStatusNot(userId, request.getName(), WorkspaceStatus.ARCHIVED)) {
-                throw new ConflictException(
-                        ErrorCode.WORKSPACE_ALREADY_EXISTS,
-                        WorkspaceMessages.WORKSPACE_ALREADY_EXISTS
-                );
-            }
-        }
 
         workspace.setName(request.getName());
         workspace.setDescription(request.getDescription());
@@ -135,7 +119,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 ));
 
         workspace.setStatus(WorkspaceStatus.ARCHIVED);
-        workspace.setDeletedAt(LocalDateTime.now());
+        workspace.setDeletedAt(LocalDateTime.now(clock));
         workspaceRepository.save(workspace);
     }
     
@@ -154,7 +138,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         long totalProjects = projectRepository.countByWorkspaceIdAndStatusNot(workspaceId, ProjectStatus.ARCHIVED);
         
         List<UUID> projectIds = projectRepository.findByWorkspaceIdAndStatusNot(workspaceId, ProjectStatus.ARCHIVED)
-                .stream().map(Project::getId).collect(Collectors.toList());
+                .stream().map(Project::getId).toList();
                 
         long totalApiKeys = 0;
         long totalShortenedUrls = 0;

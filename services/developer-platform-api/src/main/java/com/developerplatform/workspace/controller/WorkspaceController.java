@@ -9,6 +9,7 @@ import com.developerplatform.workspace.dto.request.UpdateWorkspaceRequest;
 import com.developerplatform.workspace.dto.response.WorkspaceResponse;
 import com.developerplatform.workspace.dto.response.WorkspaceStatsResponse;
 import com.developerplatform.workspace.service.interfaces.WorkspaceService;
+import com.developerplatform.workspace.utils.WorkspaceValidationUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -33,19 +34,22 @@ import java.util.UUID;
 public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
+    private final java.time.Clock clock;
+    private final WorkspaceValidationUtils workspaceValidationUtils;
 
     @PostMapping
     public ResponseEntity<ApiResponse<WorkspaceResponse>> createWorkspace(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody CreateWorkspaceRequest request) {
 
+        workspaceValidationUtils.validateWorkspaceNameForCreation(principal.getId(), request.getName());
         WorkspaceResponse responseData = workspaceService.createWorkspace(principal.getId(), request);
 
         ApiResponse<WorkspaceResponse> response = ApiResponse.<WorkspaceResponse>builder()
                 .success(true)
                 .message(WorkspaceMessages.WORKSPACE_CREATED)
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity
@@ -64,7 +68,7 @@ public class WorkspaceController {
                 .success(true)
                 .message("Workspace retrieved successfully")
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -80,7 +84,7 @@ public class WorkspaceController {
                 .success(true)
                 .message("Workspaces retrieved successfully")
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -92,13 +96,14 @@ public class WorkspaceController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateWorkspaceRequest request) {
 
+        workspaceValidationUtils.validateWorkspaceNameForUpdate(principal.getId(), id, request.getName());
         WorkspaceResponse responseData = workspaceService.updateWorkspace(principal.getId(), id, request);
 
         ApiResponse<WorkspaceResponse> response = ApiResponse.<WorkspaceResponse>builder()
                 .success(true)
                 .message(WorkspaceMessages.WORKSPACE_UPDATED)
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -114,7 +119,7 @@ public class WorkspaceController {
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .success(true)
                 .message(WorkspaceMessages.WORKSPACE_DELETED)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -131,7 +136,7 @@ public class WorkspaceController {
                 .success(true)
                 .message("Workspace stats retrieved successfully")
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
