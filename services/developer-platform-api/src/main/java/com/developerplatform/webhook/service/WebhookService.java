@@ -30,6 +30,29 @@ public class WebhookService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper;
 
+    public List<WebhookEndpoint> getWebhooks(UUID projectId) {
+        return webhookEndpointRepository.findByProjectId(projectId);
+    }
+
+    public WebhookEndpoint createWebhook(UUID projectId, com.developerplatform.webhook.dto.CreateWebhookRequest request) {
+        WebhookEndpoint endpoint = WebhookEndpoint.builder()
+                .projectId(projectId)
+                .url(request.getUrl())
+                .signingSecret(generateSecret())
+                .isActive(true)
+                .build();
+                
+        return webhookEndpointRepository.save(endpoint);
+    }
+
+    public void deleteWebhook(UUID webhookId) {
+        webhookEndpointRepository.deleteById(webhookId);
+    }
+
+    private String generateSecret() {
+        return "whsec_" + UUID.randomUUID().toString().replace("-", "");
+    }
+
     /**
      * Dispatches an event to all active webhooks for a project asynchronously.
      */

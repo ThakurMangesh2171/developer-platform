@@ -1,8 +1,9 @@
 package com.developerplatform.webhook.controller;
 
+import com.developerplatform.common.response.ApiResponse;
 import com.developerplatform.webhook.dto.CreateWebhookRequest;
 import com.developerplatform.webhook.entity.WebhookEndpoint;
-import com.developerplatform.webhook.repository.WebhookEndpointRepository;
+import com.developerplatform.webhook.service.WebhookService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,33 +16,47 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class WebhookController {
 
-    private final WebhookEndpointRepository webhookEndpointRepository;
+    private final java.time.Clock clock;
+    private final WebhookService webhookService;
 
     @GetMapping
-    public ResponseEntity<List<WebhookEndpoint>> getWebhooks(@PathVariable UUID projectId) {
-        return ResponseEntity.ok(webhookEndpointRepository.findByProjectId(projectId));
+    public ResponseEntity<ApiResponse<List<WebhookEndpoint>>> getWebhooks(@PathVariable UUID projectId) {
+        List<WebhookEndpoint> data = webhookService.getWebhooks(projectId);
+        
+        ApiResponse<List<WebhookEndpoint>> response = ApiResponse.<List<WebhookEndpoint>>builder()
+                .success(true)
+                .message("Webhooks retrieved successfully")
+                .data(data)
+                .timestamp(java.time.LocalDateTime.now(clock))
+                .build();
+                
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping
-    public ResponseEntity<WebhookEndpoint> createWebhook(@PathVariable UUID projectId, @RequestBody CreateWebhookRequest request) {
-        WebhookEndpoint endpoint = WebhookEndpoint.builder()
-                .projectId(projectId)
-                .url(request.getUrl())
-                .signingSecret(generateSecret())
-                .isActive(true)
+    public ResponseEntity<ApiResponse<WebhookEndpoint>> createWebhook(@PathVariable UUID projectId, @RequestBody CreateWebhookRequest request) {
+        WebhookEndpoint data = webhookService.createWebhook(projectId, request);
+        
+        ApiResponse<WebhookEndpoint> response = ApiResponse.<WebhookEndpoint>builder()
+                .success(true)
+                .message("Webhook created successfully")
+                .data(data)
+                .timestamp(java.time.LocalDateTime.now(clock))
                 .build();
                 
-        WebhookEndpoint saved = webhookEndpointRepository.save(endpoint);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{webhookId}")
-    public ResponseEntity<Void> deleteWebhook(@PathVariable UUID projectId, @PathVariable UUID webhookId) {
-        webhookEndpointRepository.deleteById(webhookId);
-        return ResponseEntity.noContent().build();
-    }
-    
-    private String generateSecret() {
-        return "whsec_" + UUID.randomUUID().toString().replace("-", "");
+    public ResponseEntity<ApiResponse<Void>> deleteWebhook(@PathVariable UUID projectId, @PathVariable UUID webhookId) {
+        webhookService.deleteWebhook(webhookId);
+        
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .success(true)
+                .message("Webhook deleted successfully")
+                .timestamp(java.time.LocalDateTime.now(clock))
+                .build();
+                
+        return ResponseEntity.ok(response);
     }
 }
