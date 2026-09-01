@@ -1,6 +1,7 @@
 package com.developerplatform.urlshortener.controller;
 
 import com.developerplatform.common.constants.ApiPaths;
+import com.developerplatform.common.response.ApiResponse;
 import com.developerplatform.urlshortener.dto.response.UrlAnalyticsResponse;
 import com.developerplatform.urlshortener.service.interfaces.UrlAnalyticsService;
 import lombok.RequiredArgsConstructor;
@@ -18,15 +19,23 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UrlAnalyticsController {
 
+    private final java.time.Clock clock;
     private final UrlAnalyticsService urlAnalyticsService;
 
-    @GetMapping("/{shortCode}/analytics")
-    public ResponseEntity<UrlAnalyticsResponse> getUrlAnalytics(
+    public ResponseEntity<ApiResponse<UrlAnalyticsResponse>> getUrlAnalytics(
             @PathVariable String shortCode,
             Authentication authentication) {
             
         UUID projectId = getProjectIdFromAuthentication(authentication);
-        UrlAnalyticsResponse response = urlAnalyticsService.getUrlAnalytics(projectId, shortCode);
+        UrlAnalyticsResponse data = urlAnalyticsService.getUrlAnalytics(projectId, shortCode);
+        
+        ApiResponse<UrlAnalyticsResponse> response = ApiResponse.<UrlAnalyticsResponse>builder()
+                .success(true)
+                .message("URL analytics retrieved successfully")
+                .data(data)
+                .timestamp(java.time.LocalDateTime.now(clock))
+                .build();
+                
         return ResponseEntity.ok(response);
     }
 

@@ -39,9 +39,6 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
         String shortCode;
         if (request.getCustomAlias() != null && !request.getCustomAlias().trim().isEmpty()) {
             shortCode = request.getCustomAlias().trim();
-            if (shortenedUrlRepository.findByShortCodeAndDeletedAtIsNull(shortCode).isPresent()) {
-                throw new IllegalArgumentException("Custom alias is already in use.");
-            }
         } else {
             shortCode = generateUniqueShortCode();
         }
