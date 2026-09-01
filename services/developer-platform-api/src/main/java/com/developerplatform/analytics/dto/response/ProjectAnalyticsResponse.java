@@ -14,6 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 public class ProjectAnalyticsResponse {
     private long totalRequestsUsed;
+    private long totalUrlClicks;
     private long totalQuota;
     private List<DailyUsage> usageHistory;
 
@@ -24,5 +25,6 @@ public class ProjectAnalyticsResponse {
     public static class DailyUsage {
         private String date; // YYYY-MM-DD
         private long requests;
+        private long urlClicks;
     }
 }
