@@ -31,13 +31,6 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
     @Override
     @Transactional
     public FeatureFlagResponse createFeatureFlag(UUID projectId, CreateFeatureFlagRequest request) {
-        if (featureFlagRepository.existsByProjectIdAndKeyAndDeletedAtIsNull(projectId, request.getKey())) {
-            throw new ConflictException(
-                    ErrorCode.BAD_REQUEST,
-                    "A feature flag with this key already exists in this project."
-            );
-        }
-
         FeatureFlag flag = featureFlagMapper.toEntity(request, projectId);
         FeatureFlag savedFlag = featureFlagRepository.save(flag);
         

@@ -2,8 +2,10 @@ package com.developerplatform.featureflag.controller;
 
 import com.developerplatform.common.constants.ApiPaths;
 import com.developerplatform.featureflag.dto.request.CreateFeatureFlagRequest;
+import com.developerplatform.common.response.ApiResponse;
 import com.developerplatform.featureflag.dto.response.FeatureFlagResponse;
 import com.developerplatform.featureflag.service.interfaces.FeatureFlagService;
+import com.developerplatform.featureflag.utils.FeatureFlagValidationUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,10 +21,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FeatureFlagController {
 
+    private final java.time.Clock clock;
     private final FeatureFlagService featureFlagService;
+    private final FeatureFlagValidationUtils featureFlagValidationUtils;
 
     @PostMapping
-    public ResponseEntity<FeatureFlagResponse> createFeatureFlag(
+    public ResponseEntity<ApiResponse<FeatureFlagResponse>> createFeatureFlag(
             @Valid @RequestBody CreateFeatureFlagRequest request,
             @RequestParam(required = false) UUID projectId,
             Authentication authentication) {
@@ -32,12 +36,21 @@ public class FeatureFlagController {
             throw new IllegalArgumentException("The provided API Key does not belong to this project.");
         }
         
-        FeatureFlagResponse response = featureFlagService.createFeatureFlag(authenticatedProjectId, request);
+        featureFlagValidationUtils.validateFeatureFlagKeyForCreation(authenticatedProjectId, request.getKey());
+        FeatureFlagResponse data = featureFlagService.createFeatureFlag(authenticatedProjectId, request);
+        
+        ApiResponse<FeatureFlagResponse> response = ApiResponse.<FeatureFlagResponse>builder()
+                .success(true)
+                .message("Feature flag created successfully")
+                .data(data)
+                .timestamp(java.time.LocalDateTime.now(clock))
+                .build();
+                
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @GetMapping
-    public ResponseEntity<List<FeatureFlagResponse>> getProjectFeatureFlags(
+    public ResponseEntity<ApiResponse<List<FeatureFlagResponse>>> getProjectFeatureFlags(
             @RequestParam(required = false) UUID projectId,
             Authentication authentication) {
             
@@ -46,38 +59,69 @@ public class FeatureFlagController {
             throw new IllegalArgumentException("The provided API Key does not belong to this project.");
         }
         
-        List<FeatureFlagResponse> response = featureFlagService.getProjectFeatureFlags(authenticatedProjectId);
+        List<FeatureFlagResponse> data = featureFlagService.getProjectFeatureFlags(authenticatedProjectId);
+        
+        ApiResponse<List<FeatureFlagResponse>> response = ApiResponse.<List<FeatureFlagResponse>>builder()
+                .success(true)
+                .message("Feature flags retrieved successfully")
+                .data(data)
+                .timestamp(java.time.LocalDateTime.now(clock))
+                .build();
+                
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{key}")
-    public ResponseEntity<FeatureFlagResponse> getFeatureFlag(
+    public ResponseEntity<ApiResponse<FeatureFlagResponse>> getFeatureFlag(
             @PathVariable String key,
             Authentication authentication) {
             
         UUID authenticatedProjectId = getProjectIdFromAuthentication(authentication);
-        FeatureFlagResponse response = featureFlagService.getFeatureFlag(authenticatedProjectId, key);
+        FeatureFlagResponse data = featureFlagService.getFeatureFlag(authenticatedProjectId, key);
+        
+        ApiResponse<FeatureFlagResponse> response = ApiResponse.<FeatureFlagResponse>builder()
+                .success(true)
+                .message("Feature flag retrieved successfully")
+                .data(data)
+                .timestamp(java.time.LocalDateTime.now(clock))
+                .build();
+                
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{key}/toggle")
-    public ResponseEntity<FeatureFlagResponse> toggleFeatureFlag(
+    public ResponseEntity<ApiResponse<FeatureFlagResponse>> toggleFeatureFlag(
             @PathVariable String key,
             Authentication authentication) {
             
         UUID authenticatedProjectId = getProjectIdFromAuthentication(authentication);
-        FeatureFlagResponse response = featureFlagService.toggleFeatureFlag(authenticatedProjectId, key);
+        FeatureFlagResponse data = featureFlagService.toggleFeatureFlag(authenticatedProjectId, key);
+        
+        ApiResponse<FeatureFlagResponse> response = ApiResponse.<FeatureFlagResponse>builder()
+                .success(true)
+                .message("Feature flag toggled successfully")
+                .data(data)
+                .timestamp(java.time.LocalDateTime.now(clock))
+                .build();
+                
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteFeatureFlag(
+    public ResponseEntity<ApiResponse<Void>> deleteFeatureFlag(
             @PathVariable UUID id,
             Authentication authentication) {
             
         UUID authenticatedProjectId = getProjectIdFromAuthentication(authentication);
         featureFlagService.deleteFeatureFlag(authenticatedProjectId, id);
-        return ResponseEntity.noContent().build();
+        
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .success(true)
+                .message("Feature flag deleted successfully")
+                .timestamp(java.time.LocalDateTime.now(clock))
+                .build();
+                
+        return ResponseEntity.ok(response);
     }
 
     private UUID getProjectIdFromAuthentication(Authentication authentication) {
