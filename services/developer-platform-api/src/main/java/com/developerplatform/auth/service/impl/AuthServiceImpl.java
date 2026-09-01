@@ -14,6 +14,7 @@ import com.developerplatform.auth.repository.UserTokenRepository;
 import com.developerplatform.auth.service.interfaces.AuthService;
 import com.developerplatform.auth.service.interfaces.EmailService;
 import com.developerplatform.common.enums.ErrorCode;
+import com.developerplatform.common.constants.messages.AuthMessages;
 import com.developerplatform.common.constants.messages.UserMessages;
 import com.developerplatform.common.exception.BadRequestException;
 import com.developerplatform.common.exception.ConflictException;
@@ -130,13 +131,13 @@ public class AuthServiceImpl implements AuthService {
         UserToken userToken = userTokenRepository.findByTokenAndTokenType(token, TokenType.EMAIL_VERIFICATION)
                 .orElseThrow(() -> new BadRequestException(
                         ErrorCode.BAD_REQUEST,
-                        "Verification token is invalid"
+                        AuthMessages.VERIFICATION_TOKEN_INVALID
                 ));
 
         if (userToken.isUsed() || userToken.getExpiresAt().isBefore(LocalDateTime.now(clock))) {
             throw new BadRequestException(
                     ErrorCode.BAD_REQUEST,
-                    "Verification token has expired or already been used"
+                    AuthMessages.VERIFICATION_TOKEN_EXPIRED
             );
         }
 
@@ -182,13 +183,13 @@ public class AuthServiceImpl implements AuthService {
         UserToken userToken = userTokenRepository.findByTokenAndTokenType(token, TokenType.PASSWORD_RESET)
                 .orElseThrow(() -> new BadRequestException(
                         ErrorCode.BAD_REQUEST,
-                        "Reset token is invalid"
+                        AuthMessages.RESET_TOKEN_INVALID
                 ));
 
         if (userToken.isUsed() || userToken.getExpiresAt().isBefore(LocalDateTime.now(clock))) {
             throw new BadRequestException(
                     ErrorCode.BAD_REQUEST,
-                    "Reset token has expired or already been used"
+                    AuthMessages.RESET_TOKEN_EXPIRED
             );
         }
 
@@ -205,7 +206,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.RESOURCE_NOT_FOUND,
-                        "User not found"
+                        UserMessages.USER_NOT_FOUND
                 ));
         
         return UserResponse.builder()
@@ -222,7 +223,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.RESOURCE_NOT_FOUND,
-                        "User not found"
+                        UserMessages.USER_NOT_FOUND
                 ));
 
         user.setFirstName(request.getFirstName());
@@ -244,14 +245,14 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.RESOURCE_NOT_FOUND,
-                        "User not found"
+                        UserMessages.USER_NOT_FOUND
                 ));
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
             log.warn("Password change failed. Incorrect current password for user ID: {}", userId);
             throw new BadRequestException(
                     ErrorCode.BAD_REQUEST,
-                    "Current password is incorrect"
+                    AuthMessages.CURRENT_PASSWORD_INCORRECT
             );
         }
 

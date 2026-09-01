@@ -1,6 +1,7 @@
 package com.developerplatform.urlshortener.controller;
 
 import com.developerplatform.common.constants.ApiPaths;
+import com.developerplatform.common.constants.messages.UrlShortenerMessages;
 import com.developerplatform.common.response.ApiResponse;
 import com.developerplatform.urlshortener.dto.response.UrlAnalyticsResponse;
 import com.developerplatform.urlshortener.service.interfaces.UrlAnalyticsService;
@@ -22,8 +23,9 @@ public class UrlAnalyticsController {
     private final java.time.Clock clock;
     private final UrlAnalyticsService urlAnalyticsService;
 
+    @GetMapping("/{shortCode}/analytics")
     public ResponseEntity<ApiResponse<UrlAnalyticsResponse>> getUrlAnalytics(
-            @PathVariable String shortCode,
+            @PathVariable("shortCode") String shortCode,
             Authentication authentication) {
             
         UUID projectId = getProjectIdFromAuthentication(authentication);
@@ -31,7 +33,7 @@ public class UrlAnalyticsController {
         
         ApiResponse<UrlAnalyticsResponse> response = ApiResponse.<UrlAnalyticsResponse>builder()
                 .success(true)
-                .message("URL analytics retrieved successfully")
+                .message(UrlShortenerMessages.URL_ANALYTICS_RETRIEVED)
                 .data(data)
                 .timestamp(java.time.LocalDateTime.now(clock))
                 .build();
@@ -44,8 +46,8 @@ public class UrlAnalyticsController {
             throw new IllegalArgumentException("Authentication required. Please provide a valid API Key.");
         }
         
-        if (authentication.getPrincipal() instanceof UUID) {
-            return (UUID) authentication.getPrincipal();
+        if (authentication.getPrincipal() instanceof UUID uuid) {
+            return uuid;
         }
         
         throw new IllegalArgumentException("Invalid authentication principal type.");

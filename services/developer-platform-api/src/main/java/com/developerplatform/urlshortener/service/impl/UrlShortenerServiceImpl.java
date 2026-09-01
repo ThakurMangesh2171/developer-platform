@@ -1,6 +1,7 @@
 package com.developerplatform.urlshortener.service.impl;
 
 import com.developerplatform.common.enums.ErrorCode;
+import com.developerplatform.common.constants.messages.UrlShortenerMessages;
 import com.developerplatform.common.exception.ResourceNotFoundException;
 import com.developerplatform.urlshortener.dto.request.CreateUrlRequest;
 import com.developerplatform.urlshortener.dto.response.ShortenedUrlResponse;
@@ -44,7 +45,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
         }
         
         if (request.getExpiresAt() != null && request.getExpiresAt().isAfter(LocalDateTime.now(clock).plusYears(1))) {
-            throw new IllegalArgumentException("Expiration date cannot be more than 1 year in the future.");
+            throw new IllegalArgumentException(UrlShortenerMessages.EXPIRATION_DATE_TOO_FAR);
         }
         
         ShortenedUrl shortenedUrl = new ShortenedUrl();
@@ -62,10 +63,10 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
     @Transactional
     public String resolveShortUrl(String shortCode, String ipAddress, String userAgent) {
         ShortenedUrl shortenedUrl = shortenedUrlRepository.findByShortCodeAndDeletedAtIsNull(shortCode)
-                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Short URL not found for code: " + shortCode));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, UrlShortenerMessages.URL_NOT_FOUND));
         
         if (shortenedUrl.getExpiresAt() != null && shortenedUrl.getExpiresAt().isBefore(LocalDateTime.now(clock))) {
-            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "This short URL has expired.");
+            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, UrlShortenerMessages.URL_EXPIRED);
         }
         
         // Save analytics
@@ -90,7 +91,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
     public List<ShortenedUrlResponse> getProjectUrls(UUID projectId, String baseUrl) {
         return shortenedUrlRepository.findByProjectIdAndDeletedAtIsNull(projectId).stream()
                 .map(url -> mapToResponse(url, baseUrl))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private String generateUniqueShortCode() {

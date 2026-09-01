@@ -28,6 +28,20 @@ public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
     }
 
     public UUID getProjectId() {
-        return projectId;
+        return (UUID) getPrincipal();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ApiKeyAuthenticationToken that)) return false;
+        if (!super.equals(o)) return false;
+        return java.util.Objects.equals(projectId, that.projectId) &&
+               java.util.Objects.equals(apiKeyPrefix, that.apiKeyPrefix);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hash(super.hashCode(), projectId, apiKeyPrefix);
     }
 }

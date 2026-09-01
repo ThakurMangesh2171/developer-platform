@@ -2,6 +2,7 @@ package com.developerplatform.analytics.controller;
 
 import com.developerplatform.analytics.dto.response.ProjectAnalyticsResponse;
 import com.developerplatform.analytics.service.interfaces.UsageAnalyticsService;
+import com.developerplatform.common.constants.messages.AnalyticsMessages;
 import com.developerplatform.common.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,10 +24,9 @@ public class AnalyticsController {
     @GetMapping
     public ResponseEntity<ApiResponse<ProjectAnalyticsResponse>> getProjectAnalytics(@PathVariable UUID projectId) {
         ProjectAnalyticsResponse data = usageAnalyticsService.getProjectAnalytics(projectId);
-        
         ApiResponse<ProjectAnalyticsResponse> response = ApiResponse.<ProjectAnalyticsResponse>builder()
                 .success(true)
-                .message("Project analytics retrieved successfully")
+                .message(AnalyticsMessages.ANALYTICS_RETRIEVED_SUCCESSFULLY)
                 .data(data)
                 .timestamp(java.time.LocalDateTime.now(clock))
                 .build();

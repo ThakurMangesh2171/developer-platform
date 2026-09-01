@@ -83,7 +83,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         List<ApiKey> apiKeys = apiKeyRepository.findByProjectIdAndDeletedAtIsNull(projectId);
         return apiKeys.stream()
                 .map(ApiKeyMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override

@@ -21,13 +21,12 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication instanceof ApiKeyAuthenticationToken) {
-            ApiKeyAuthenticationToken apiKeyAuth = (ApiKeyAuthenticationToken) authentication;
+        if (authentication instanceof ApiKeyAuthenticationToken apiKeyAuth) {
             // The credentials store the api key prefix
             String apiKeyPrefix = (String) apiKeyAuth.getCredentials();
 
             if (!rateLimitingService.isAllowed(apiKeyPrefix)) {
-                throw new RateLimitException("You have exceeded the maximum number of requests allowed per minute (60). Please try again later.");
+                throw new RateLimitException(com.developerplatform.common.constants.messages.AnalyticsMessages.RATE_LIMIT_EXCEEDED);
             }
         }
 

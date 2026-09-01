@@ -87,7 +87,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 .map(WorkspaceMember::getWorkspace)
                 .filter(w -> w.getStatus() != WorkspaceStatus.ARCHIVED)
                 .map(WorkspaceMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -138,7 +138,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         long totalProjects = projectRepository.countByWorkspaceIdAndStatusNot(workspaceId, ProjectStatus.ARCHIVED);
         
         List<UUID> projectIds = projectRepository.findByWorkspaceIdAndStatusNot(workspaceId, ProjectStatus.ARCHIVED)
-                .stream().map(Project::getId).collect(Collectors.toList());
+                .stream().map(Project::getId).toList();
                 
         long totalApiKeys = 0;
         long totalShortenedUrls = 0;

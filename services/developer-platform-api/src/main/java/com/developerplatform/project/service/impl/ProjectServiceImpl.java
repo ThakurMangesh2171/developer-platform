@@ -3,7 +3,6 @@ package com.developerplatform.project.service.impl;
 import com.developerplatform.common.enums.ErrorCode;
 import com.developerplatform.common.constants.messages.ProjectMessages;
 import com.developerplatform.common.constants.messages.WorkspaceMessages;
-import com.developerplatform.common.exception.ConflictException;
 import com.developerplatform.common.exception.ResourceNotFoundException;
 import com.developerplatform.project.dto.request.CreateProjectRequest;
 import com.developerplatform.project.dto.request.UpdateProjectRequest;
@@ -67,7 +66,7 @@ public class ProjectServiceImpl implements ProjectService {
         List<Project> projects = projectRepository.findByWorkspaceIdAndStatusNot(workspaceId, ProjectStatus.ARCHIVED);
         return projects.stream()
                 .map(ProjectMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override

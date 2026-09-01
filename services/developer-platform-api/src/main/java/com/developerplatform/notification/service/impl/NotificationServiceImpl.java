@@ -3,6 +3,8 @@ package com.developerplatform.notification.service.impl;
 import com.developerplatform.auth.entity.User;
 import com.developerplatform.auth.repository.UserRepository;
 import com.developerplatform.common.enums.ErrorCode;
+import com.developerplatform.common.constants.messages.NotificationMessages;
+import com.developerplatform.common.constants.messages.UserMessages;
 import com.developerplatform.common.exception.ResourceNotFoundException;
 import com.developerplatform.notification.dto.NotificationResponse;
 import com.developerplatform.notification.entity.Notification;
@@ -28,7 +30,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void createNotification(UUID userId, String title, String message, NotificationType type) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, UserMessages.USER_NOT_FOUND));
 
         Notification notification = Notification.builder()
                 .user(user)
@@ -46,7 +48,7 @@ public class NotificationServiceImpl implements NotificationService {
     public List<NotificationResponse> getNotificationsForUser(UUID userId) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -54,7 +56,7 @@ public class NotificationServiceImpl implements NotificationService {
     public List<NotificationResponse> getUnreadNotificationsForUser(UUID userId) {
         return notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(userId).stream()
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -67,10 +69,10 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void markAsRead(UUID notificationId, UUID userId) {
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Notification not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, NotificationMessages.NOTIFICATION_NOT_FOUND));
 
         if (!notification.getUser().getId().equals(userId)) {
-            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Notification not found");
+            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, NotificationMessages.NOTIFICATION_NOT_FOUND);
         }
 
         notification.setRead(true);

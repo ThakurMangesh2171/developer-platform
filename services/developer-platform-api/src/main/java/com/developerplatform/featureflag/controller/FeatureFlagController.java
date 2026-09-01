@@ -129,8 +129,8 @@ public class FeatureFlagController {
             throw new IllegalArgumentException("Authentication required. Please provide a valid API Key.");
         }
         
-        if (authentication.getPrincipal() instanceof UUID) {
-            return (UUID) authentication.getPrincipal();
+        if (authentication.getPrincipal() instanceof UUID projectId) {
+            return projectId;
         }
         
         throw new IllegalArgumentException("Invalid authentication principal type.");

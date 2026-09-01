@@ -2,6 +2,8 @@ package com.developerplatform.workspace.service;
 
 import com.developerplatform.auth.entity.User;
 import com.developerplatform.auth.repository.UserRepository;
+import com.developerplatform.common.constants.messages.UserMessages;
+import com.developerplatform.common.constants.messages.WorkspaceMessages;
 import com.developerplatform.common.enums.ErrorCode;
 import com.developerplatform.common.exception.ConflictException;
 import com.developerplatform.common.exception.ResourceNotFoundException;
@@ -42,7 +44,7 @@ public class WorkspaceMemberService {
 
         return workspaceMemberRepository.findByWorkspaceIdAndDeletedAtIsNull(workspaceId).stream()
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional
@@ -93,7 +95,7 @@ public class WorkspaceMemberService {
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found"));
                 
         if (!memberToUpdate.getWorkspace().getId().equals(workspaceId) || memberToUpdate.getDeletedAt() != null) {
-            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found in this workspace");
+            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, WorkspaceMessages.MEMBER_NOT_FOUND);
         }
         
         // Prevent removing the last admin (basic check, could be more robust)
@@ -102,7 +104,7 @@ public class WorkspaceMemberService {
                     .filter(m -> m.getRole() == WorkspaceRole.ADMIN)
                     .count();
             if (adminCount <= 1) {
-                throw new ConflictException(ErrorCode.BAD_REQUEST, "Cannot remove the last admin of a workspace");
+                throw new ConflictException(ErrorCode.BAD_REQUEST, WorkspaceMessages.CANNOT_REMOVE_LAST_ADMIN);
             }
         }
 
@@ -118,7 +120,7 @@ public class WorkspaceMemberService {
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found"));
                 
         if (!memberToRemove.getWorkspace().getId().equals(workspaceId) || memberToRemove.getDeletedAt() != null) {
-            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found in this workspace");
+            throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, WorkspaceMessages.MEMBER_NOT_FOUND);
         }
         
         // Prevent removing the last admin
@@ -127,7 +129,7 @@ public class WorkspaceMemberService {
                     .filter(m -> m.getRole() == WorkspaceRole.ADMIN)
                     .count();
             if (adminCount <= 1) {
-                throw new ConflictException(ErrorCode.BAD_REQUEST, "Cannot remove the last admin of a workspace");
+                throw new ConflictException(ErrorCode.BAD_REQUEST, WorkspaceMessages.CANNOT_REMOVE_LAST_ADMIN);
             }
         }
 

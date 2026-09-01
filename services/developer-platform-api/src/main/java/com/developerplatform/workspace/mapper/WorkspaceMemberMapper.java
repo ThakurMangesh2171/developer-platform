@@ -3,7 +3,10 @@ package com.developerplatform.workspace.mapper;
 import com.developerplatform.workspace.dto.response.WorkspaceMemberResponse;
 import com.developerplatform.workspace.entity.WorkspaceMember;
 
-public class WorkspaceMemberMapper {
+public final class WorkspaceMemberMapper {
+
+    private WorkspaceMemberMapper() {
+    }
 
     public static WorkspaceMemberResponse toResponse(WorkspaceMember entity) {
         if (entity == null) {

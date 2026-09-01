@@ -57,7 +57,7 @@ public class UrlAnalyticsServiceImpl implements UrlAnalyticsService {
         // Generate data points for the last 30 days including empty days
         List<ClickDataPoint> dataPoints = new ArrayList<>();
         for (int i = 29; i >= 0; i--) {
-            LocalDate date = LocalDate.now().minusDays(i);
+            LocalDate date = LocalDate.now(clock).minusDays(i);
             dataPoints.add(new ClickDataPoint(date, clicksByDate.getOrDefault(date, 0L)));
         }
 

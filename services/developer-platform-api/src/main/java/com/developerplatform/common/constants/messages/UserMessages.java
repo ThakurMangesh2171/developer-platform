@@ -28,4 +28,6 @@ public final class UserMessages {
 
     public static final String EMAIL_NOT_VERIFIED = "Please verify your email address first";
 
+    public static final String USER_NOT_FOUND = "User not found";
+
 }

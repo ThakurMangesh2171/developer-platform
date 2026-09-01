@@ -80,8 +80,8 @@ public class UrlShortenerController {
             throw new IllegalArgumentException("Authentication required. Please provide a valid API Key.");
         }
         
-        if (authentication.getPrincipal() instanceof UUID) {
-            return (UUID) authentication.getPrincipal();
+        if (authentication.getPrincipal() instanceof UUID uuid) {
+            return uuid;
         }
         
         throw new IllegalArgumentException("Invalid authentication principal type.");
