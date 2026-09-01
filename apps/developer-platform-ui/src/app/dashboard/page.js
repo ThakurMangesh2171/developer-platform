@@ -190,6 +190,13 @@ export default function DashboardOverview() {
               Workspace Settings
             </button>
           </Link>
+          <Link href={`/dashboard/workspaces/${activeWorkspace.id}/members`}>
+            <button 
+              style={{ padding: '10px 20px', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}
+            >
+              Members
+            </button>
+          </Link>
           <button 
             className="glow-button" 
             onClick={() => setShowProjectModal(true)}

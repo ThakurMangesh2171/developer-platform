@@ -33,6 +33,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 
     @Override
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = com.developerplatform.common.config.CacheConfig.URL_CACHE, key = "#projectId")
     public ShortenedUrlResponse createShortUrl(UUID projectId, CreateUrlRequest request, String baseUrl) {
         String shortCode;
         if (request.getCustomAlias() != null && !request.getCustomAlias().trim().isEmpty()) {
@@ -87,6 +88,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 
     @Override
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = com.developerplatform.common.config.CacheConfig.URL_CACHE, key = "#projectId")
     public List<ShortenedUrlResponse> getProjectUrls(UUID projectId, String baseUrl) {
         return shortenedUrlRepository.findByProjectIdAndDeletedAtIsNull(projectId).stream()
                 .map(url -> mapToResponse(url, baseUrl))

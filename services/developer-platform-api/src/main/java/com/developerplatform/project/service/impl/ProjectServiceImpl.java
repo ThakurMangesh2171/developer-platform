@@ -15,7 +15,15 @@ import com.developerplatform.project.repository.ProjectRepository;
 import com.developerplatform.project.service.interfaces.ProjectService;
 import com.developerplatform.workspace.enums.WorkspaceStatus;
 import com.developerplatform.workspace.repository.WorkspaceRepository;
+import com.developerplatform.workspace.entity.WorkspaceMember;
+import com.developerplatform.workspace.enums.WorkspaceRole;
+import com.developerplatform.workspace.repository.WorkspaceMemberRepository;
+import com.developerplatform.common.exception.ForbiddenException;
+import com.developerplatform.common.config.CacheConfig;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,11 +38,12 @@ public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepository;
     private final WorkspaceRepository workspaceRepository;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
 
     @Override
     @Transactional
     public ProjectResponse createProject(UUID userId, CreateProjectRequest request) {
-        validateWorkspaceOwnership(userId, request.getWorkspaceId());
+        validateWorkspaceAccess(userId, request.getWorkspaceId(), List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
 
         if (projectRepository.existsByWorkspaceIdAndNameAndStatusNot(request.getWorkspaceId(), request.getName(), ProjectStatus.ARCHIVED)) {
             throw new ConflictException(
@@ -50,15 +59,16 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.PROJECT_CACHE, key = "#projectId")
     public ProjectResponse getProject(UUID userId, UUID projectId) {
-        Project project = getProjectAndValidateOwnership(userId, projectId);
+        Project project = getProjectAndValidateAccess(userId, projectId, List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER, WorkspaceRole.VIEWER));
         return ProjectMapper.toResponse(project);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ProjectResponse> getWorkspaceProjects(UUID userId, UUID workspaceId) {
-        validateWorkspaceOwnership(userId, workspaceId);
+        validateWorkspaceAccess(userId, workspaceId, List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER, WorkspaceRole.VIEWER));
 
         List<Project> projects = projectRepository.findByWorkspaceIdAndStatusNot(workspaceId, ProjectStatus.ARCHIVED);
         return projects.stream()
@@ -68,8 +78,9 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
+    @CachePut(value = CacheConfig.PROJECT_CACHE, key = "#projectId")
     public ProjectResponse updateProject(UUID userId, UUID projectId, UpdateProjectRequest request) {
-        Project project = getProjectAndValidateOwnership(userId, projectId);
+        Project project = getProjectAndValidateAccess(userId, projectId, List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
 
         // If name has changed, verify uniqueness within the workspace
         if (!project.getName().equalsIgnoreCase(request.getName())) {
@@ -89,29 +100,45 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
+    @CacheEvict(value = CacheConfig.PROJECT_CACHE, key = "#projectId")
     public void deleteProject(UUID userId, UUID projectId) {
-        Project project = getProjectAndValidateOwnership(userId, projectId);
+        Project project = getProjectAndValidateAccess(userId, projectId, List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
 
         project.setStatus(ProjectStatus.ARCHIVED);
         project.setDeletedAt(LocalDateTime.now());
         projectRepository.save(project);
     }
 
-    private void validateWorkspaceOwnership(UUID userId, UUID workspaceId) {
-        workspaceRepository.findByIdAndUserIdAndStatusNot(workspaceId, userId, WorkspaceStatus.ARCHIVED)
+    private void validateWorkspaceAccess(UUID userId, UUID workspaceId, List<WorkspaceRole> allowedRoles) {
+        // Ensure workspace exists and isn't archived
+        workspaceRepository.findByIdAndStatusNot(workspaceId, WorkspaceStatus.ARCHIVED)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.WORKSPACE_NOT_FOUND,
                         WorkspaceMessages.WORKSPACE_NOT_FOUND
                 ));
+                
+        // Ensure user is member and has correct role
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserIdAndDeletedAtIsNull(workspaceId, userId)
+                .orElseThrow(() -> new ForbiddenException(
+                        ErrorCode.FORBIDDEN,
+                        "You do not have access to this workspace."
+                ));
+                
+        if (!allowedRoles.contains(member.getRole())) {
+            throw new ForbiddenException(
+                    ErrorCode.FORBIDDEN,
+                    "You do not have the required permissions for this action."
+            );
+        }
     }
 
-    private Project getProjectAndValidateOwnership(UUID userId, UUID projectId) {
+    private Project getProjectAndValidateAccess(UUID userId, UUID projectId, List<WorkspaceRole> allowedRoles) {
         Project project = projectRepository.findByIdAndStatusNot(projectId, ProjectStatus.ARCHIVED)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.PROJECT_NOT_FOUND,
                         ProjectMessages.PROJECT_NOT_FOUND
                 ));
-        validateWorkspaceOwnership(userId, project.getWorkspaceId());
+        validateWorkspaceAccess(userId, project.getWorkspaceId(), allowedRoles);
         return project;
     }
 }

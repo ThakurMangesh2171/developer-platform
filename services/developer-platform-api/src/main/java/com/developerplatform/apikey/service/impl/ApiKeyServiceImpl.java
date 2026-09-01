@@ -19,6 +19,10 @@ import com.developerplatform.project.enums.ProjectStatus;
 import com.developerplatform.project.repository.ProjectRepository;
 import com.developerplatform.workspace.enums.WorkspaceStatus;
 import com.developerplatform.workspace.repository.WorkspaceRepository;
+import com.developerplatform.workspace.entity.WorkspaceMember;
+import com.developerplatform.workspace.enums.WorkspaceRole;
+import com.developerplatform.workspace.repository.WorkspaceMemberRepository;
+import com.developerplatform.common.exception.ForbiddenException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,11 +39,12 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     private final ApiKeyRepository apiKeyRepository;
     private final ProjectRepository projectRepository;
     private final WorkspaceRepository workspaceRepository;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
 
     @Override
     @Transactional
     public CreateApiKeyResponse createApiKey(UUID userId, CreateApiKeyRequest request) {
-        validateProjectOwnership(userId, request.getProjectId());
+        validateProjectAccess(userId, request.getProjectId(), List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
 
         String rawKey = ApiKeyUtils.generateRawKey();
         String prefix = ApiKeyUtils.extractPrefix(rawKey);
@@ -61,7 +66,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     @Override
     @Transactional(readOnly = true)
     public List<ApiKeyResponse> getProjectApiKeys(UUID userId, UUID projectId) {
-        validateProjectOwnership(userId, projectId);
+        validateProjectAccess(userId, projectId, List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER, WorkspaceRole.VIEWER));
 
         List<ApiKey> apiKeys = apiKeyRepository.findByProjectIdAndDeletedAtIsNull(projectId);
         return apiKeys.stream()
@@ -78,24 +83,37 @@ public class ApiKeyServiceImpl implements ApiKeyService {
                         ApiKeyMessages.API_KEY_NOT_FOUND
                 ));
 
-        validateProjectOwnership(userId, apiKey.getProjectId());
+        validateProjectAccess(userId, apiKey.getProjectId(), List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
 
         apiKey.setStatus(ApiKeyStatus.REVOKED);
         apiKey.setDeletedAt(LocalDateTime.now());
         apiKeyRepository.save(apiKey);
     }
 
-    private void validateProjectOwnership(UUID userId, UUID projectId) {
+    private void validateProjectAccess(UUID userId, UUID projectId, List<WorkspaceRole> allowedRoles) {
         Project project = projectRepository.findByIdAndStatusNot(projectId, ProjectStatus.ARCHIVED)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.PROJECT_NOT_FOUND,
                         ProjectMessages.PROJECT_NOT_FOUND
                 ));
 
-        workspaceRepository.findByIdAndUserIdAndStatusNot(project.getWorkspaceId(), userId, WorkspaceStatus.ARCHIVED)
+        workspaceRepository.findByIdAndStatusNot(project.getWorkspaceId(), WorkspaceStatus.ARCHIVED)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.WORKSPACE_NOT_FOUND,
                         WorkspaceMessages.WORKSPACE_NOT_FOUND
                 ));
+                
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserIdAndDeletedAtIsNull(project.getWorkspaceId(), userId)
+                .orElseThrow(() -> new ForbiddenException(
+                        ErrorCode.FORBIDDEN,
+                        "You do not have access to this workspace."
+                ));
+                
+        if (!allowedRoles.contains(member.getRole())) {
+            throw new ForbiddenException(
+                    ErrorCode.FORBIDDEN,
+                    "You do not have the required permissions for this action."
+            );
+        }
     }
 }

@@ -15,6 +15,8 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, UUID> {
     List<Workspace> findByUserIdAndStatusNot(UUID userId, WorkspaceStatus status);
 
     Optional<Workspace> findByIdAndUserIdAndStatusNot(UUID id, UUID userId, WorkspaceStatus status);
+    
+    Optional<Workspace> findByIdAndStatusNot(UUID id, WorkspaceStatus status);
 
     boolean existsByUserIdAndNameAndStatusNot(UUID userId, String name, WorkspaceStatus status);
 }
