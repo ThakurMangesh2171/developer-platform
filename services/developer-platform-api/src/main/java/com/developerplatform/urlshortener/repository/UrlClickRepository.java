@@ -14,5 +14,8 @@ public interface UrlClickRepository extends JpaRepository<UrlClick, UUID> {
     List<UrlClick> findByShortenedUrlIdAndClickedAtBetweenAndDeletedAtIsNull(
             UUID shortenedUrlId, LocalDateTime start, LocalDateTime end);
             
+    List<UrlClick> findByShortenedUrlIdInAndClickedAtBetweenAndDeletedAtIsNull(
+            List<UUID> shortenedUrlIds, LocalDateTime start, LocalDateTime end);
+            
     long countByShortenedUrlIdAndDeletedAtIsNull(UUID shortenedUrlId);
 }

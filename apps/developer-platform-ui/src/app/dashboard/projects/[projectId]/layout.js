@@ -12,7 +12,8 @@ export default function ProjectLayout({ children, params }) {
   const isFeatureFlags = pathname.includes('/feature-flags');
   const isApiKeys = pathname.includes('/api-keys');
   const isWebhooks = pathname.includes('/webhooks');
-  const isOverview = !isUrlShortener && !isFeatureFlags && !isApiKeys && !isWebhooks;
+  const isAnalytics = pathname.includes('/analytics');
+  const isOverview = !isUrlShortener && !isFeatureFlags && !isApiKeys && !isWebhooks && !isAnalytics;
   
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -80,6 +81,19 @@ export default function ProjectLayout({ children, params }) {
           }}
         >
           Webhooks
+        </Link>
+        
+        <Link 
+          href={`/dashboard/projects/${projectId}/analytics`}
+          style={{
+            padding: '12px 0',
+            color: isAnalytics ? 'var(--accent-primary)' : 'var(--text-secondary)',
+            borderBottom: isAnalytics ? '2px solid var(--accent-primary)' : '2px solid transparent',
+            fontWeight: isAnalytics ? '600' : '400',
+            fontSize: '15px'
+          }}
+        >
+          Analytics
         </Link>
       </div>
 
