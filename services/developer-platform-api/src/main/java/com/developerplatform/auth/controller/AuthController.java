@@ -109,7 +109,8 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getMe(Authentication authentication) {
-        UUID userId = (UUID) authentication.getPrincipal();
+        com.developerplatform.security.UserPrincipal principal = (com.developerplatform.security.UserPrincipal) authentication.getPrincipal();
+        UUID userId = principal.getId();
         UserResponse userResponse = authService.getUserProfile(userId);
 
         ApiResponse<UserResponse> response = ApiResponse.<UserResponse>builder()
@@ -126,7 +127,8 @@ public class AuthController {
     public ResponseEntity<ApiResponse<UserResponse>> updateProfile(
             Authentication authentication,
             @Valid @RequestBody UpdateProfileRequest request) {
-        UUID userId = (UUID) authentication.getPrincipal();
+        com.developerplatform.security.UserPrincipal principal = (com.developerplatform.security.UserPrincipal) authentication.getPrincipal();
+        UUID userId = principal.getId();
         UserResponse userResponse = authService.updateProfile(userId, request);
 
         ApiResponse<UserResponse> response = ApiResponse.<UserResponse>builder()
@@ -143,7 +145,8 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> changePassword(
             Authentication authentication,
             @Valid @RequestBody ChangePasswordRequest request) {
-        UUID userId = (UUID) authentication.getPrincipal();
+        com.developerplatform.security.UserPrincipal principal = (com.developerplatform.security.UserPrincipal) authentication.getPrincipal();
+        UUID userId = principal.getId();
         authService.changePassword(userId, request);
 
         ApiResponse<Void> response = ApiResponse.<Void>builder()

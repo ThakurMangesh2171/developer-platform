@@ -18,7 +18,7 @@ public class WorkspaceSecurityService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
 
     public WorkspaceMember verifyAccess(UUID workspaceId, UUID userId, WorkspaceRole requiredRole) {
-        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserIdAndDeletedAtIsNull(workspaceId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.RESOURCE_NOT_FOUND,
                         "Workspace not found or you do not have access to it."

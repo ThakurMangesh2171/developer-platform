@@ -11,11 +11,11 @@ import java.util.UUID;
 @Repository
 public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember, UUID> {
     
-    List<WorkspaceMember> findByWorkspaceId(UUID workspaceId);
+    List<WorkspaceMember> findByWorkspaceIdAndDeletedAtIsNull(UUID workspaceId);
     
-    List<WorkspaceMember> findByUserId(UUID userId);
+    List<WorkspaceMember> findByUserIdAndDeletedAtIsNull(UUID userId);
     
-    Optional<WorkspaceMember> findByWorkspaceIdAndUserId(UUID workspaceId, UUID userId);
+    Optional<WorkspaceMember> findByWorkspaceIdAndUserIdAndDeletedAtIsNull(UUID workspaceId, UUID userId);
     
-    boolean existsByWorkspaceIdAndUserId(UUID workspaceId, UUID userId);
+    boolean existsByWorkspaceIdAndUserIdAndDeletedAtIsNull(UUID workspaceId, UUID userId);
 }

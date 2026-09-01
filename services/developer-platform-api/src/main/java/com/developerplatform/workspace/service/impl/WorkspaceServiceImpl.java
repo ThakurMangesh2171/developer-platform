@@ -18,6 +18,13 @@ import com.developerplatform.project.enums.ProjectStatus;
 import com.developerplatform.project.entity.Project;
 import com.developerplatform.apikey.repository.ApiKeyRepository;
 import com.developerplatform.urlshortener.repository.ShortenedUrlRepository;
+import com.developerplatform.workspace.entity.WorkspaceMember;
+import com.developerplatform.workspace.enums.WorkspaceRole;
+import com.developerplatform.workspace.enums.WorkspaceMemberStatus;
+import com.developerplatform.workspace.repository.WorkspaceMemberRepository;
+import com.developerplatform.auth.repository.UserRepository;
+import com.developerplatform.auth.entity.User;
+import com.developerplatform.common.exception.ForbiddenException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +39,8 @@ import java.util.stream.Collectors;
 public class WorkspaceServiceImpl implements WorkspaceService {
 
     private final WorkspaceRepository workspaceRepository;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
     private final ApiKeyRepository apiKeyRepository;
     private final ShortenedUrlRepository shortenedUrlRepository;
@@ -48,13 +57,27 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
         Workspace workspace = WorkspaceMapper.toEntity(request, userId);
         Workspace savedWorkspace = workspaceRepository.save(workspace);
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "User not found"));
+                
+        WorkspaceMember member = WorkspaceMember.builder()
+                .workspace(savedWorkspace)
+                .user(user)
+                .role(WorkspaceRole.ADMIN)
+                .status(WorkspaceMemberStatus.ACTIVE)
+                .build();
+        workspaceMemberRepository.save(member);
+        
         return WorkspaceMapper.toResponse(savedWorkspace);
     }
 
     @Override
     @Transactional(readOnly = true)
     public WorkspaceResponse getWorkspace(UUID userId, UUID workspaceId) {
-        Workspace workspace = workspaceRepository.findByIdAndUserIdAndStatusNot(workspaceId, userId, WorkspaceStatus.ARCHIVED)
+        verifyUserIsWorkspaceMember(workspaceId, userId);
+        
+        Workspace workspace = workspaceRepository.findByIdAndStatusNot(workspaceId, WorkspaceStatus.ARCHIVED)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.WORKSPACE_NOT_FOUND,
                         WorkspaceMessages.WORKSPACE_NOT_FOUND
@@ -65,8 +88,10 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional(readOnly = true)
     public List<WorkspaceResponse> getUserWorkspaces(UUID userId) {
-        List<Workspace> workspaces = workspaceRepository.findByUserIdAndStatusNot(userId, WorkspaceStatus.ARCHIVED);
-        return workspaces.stream()
+        List<WorkspaceMember> members = workspaceMemberRepository.findByUserIdAndDeletedAtIsNull(userId);
+        return members.stream()
+                .map(WorkspaceMember::getWorkspace)
+                .filter(w -> w.getStatus() != WorkspaceStatus.ARCHIVED)
                 .map(WorkspaceMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -74,7 +99,9 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public WorkspaceResponse updateWorkspace(UUID userId, UUID workspaceId, UpdateWorkspaceRequest request) {
-        Workspace workspace = workspaceRepository.findByIdAndUserIdAndStatusNot(workspaceId, userId, WorkspaceStatus.ARCHIVED)
+        verifyUserHasWorkspaceRole(workspaceId, userId, List.of(WorkspaceRole.ADMIN));
+        
+        Workspace workspace = workspaceRepository.findByIdAndStatusNot(workspaceId, WorkspaceStatus.ARCHIVED)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.WORKSPACE_NOT_FOUND,
                         WorkspaceMessages.WORKSPACE_NOT_FOUND
@@ -99,7 +126,9 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public void deleteWorkspace(UUID userId, UUID workspaceId) {
-        Workspace workspace = workspaceRepository.findByIdAndUserIdAndStatusNot(workspaceId, userId, WorkspaceStatus.ARCHIVED)
+        verifyUserHasWorkspaceRole(workspaceId, userId, List.of(WorkspaceRole.ADMIN));
+        
+        Workspace workspace = workspaceRepository.findByIdAndStatusNot(workspaceId, WorkspaceStatus.ARCHIVED)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.WORKSPACE_NOT_FOUND,
                         WorkspaceMessages.WORKSPACE_NOT_FOUND
@@ -113,8 +142,10 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional(readOnly = true)
     public WorkspaceStatsResponse getWorkspaceStats(UUID userId, UUID workspaceId) {
-        // Verify workspace exists and belongs to user
-        workspaceRepository.findByIdAndUserIdAndStatusNot(workspaceId, userId, WorkspaceStatus.ARCHIVED)
+        verifyUserIsWorkspaceMember(workspaceId, userId);
+        
+        // Verify workspace exists
+        workspaceRepository.findByIdAndStatusNot(workspaceId, WorkspaceStatus.ARCHIVED)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.WORKSPACE_NOT_FOUND,
                         WorkspaceMessages.WORKSPACE_NOT_FOUND
@@ -141,5 +172,29 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 .totalShortenedUrls(totalShortenedUrls)
                 .totalUrlClicks(totalUrlClicks)
                 .build();
+    }
+    
+    private void verifyUserIsWorkspaceMember(UUID workspaceId, UUID userId) {
+        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserIdAndDeletedAtIsNull(workspaceId, userId)) {
+            throw new ForbiddenException(
+                    ErrorCode.FORBIDDEN,
+                    "You do not have access to this workspace."
+            );
+        }
+    }
+    
+    private void verifyUserHasWorkspaceRole(UUID workspaceId, UUID userId, List<WorkspaceRole> allowedRoles) {
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserIdAndDeletedAtIsNull(workspaceId, userId)
+                .orElseThrow(() -> new ForbiddenException(
+                        ErrorCode.FORBIDDEN,
+                        "You do not have access to this workspace."
+                ));
+                
+        if (!allowedRoles.contains(member.getRole())) {
+            throw new ForbiddenException(
+                    ErrorCode.FORBIDDEN,
+                    "You do not have the required permissions for this action."
+            );
+        }
     }
 }

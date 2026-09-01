@@ -3,21 +3,31 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
+import { apiFetch } from '@/lib/api';
+
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleReset = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
-    // Simulate API call for now (Placeholder)
-    setTimeout(() => {
+    try {
+      await apiFetch('/api/v1/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email })
+      });
       setSuccess(true);
+    } catch (err) {
+      setError(err.message || 'An error occurred. Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -48,6 +58,11 @@ export default function ForgotPasswordPage() {
             </div>
           ) : (
             <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {error && (
+                <div style={{ padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '8px', fontSize: '14px' }}>
+                  {error}
+                </div>
+              )}
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>Email</label>
                 <input 

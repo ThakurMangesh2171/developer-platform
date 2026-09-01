@@ -35,7 +35,7 @@ public class WorkspaceMemberService {
     public List<WorkspaceMemberResponse> getMembers(UUID workspaceId, UUID currentUserId) {
         workspaceSecurityService.verifyAccess(workspaceId, currentUserId, WorkspaceRole.VIEWER);
 
-        return workspaceMemberRepository.findByWorkspaceId(workspaceId).stream()
+        return workspaceMemberRepository.findByWorkspaceIdAndDeletedAtIsNull(workspaceId).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -50,7 +50,7 @@ public class WorkspaceMemberService {
                         "User with email " + request.getEmail() + " not found. They must sign up first."
                 ));
 
-        if (workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, invitee.getId())) {
+        if (workspaceMemberRepository.existsByWorkspaceIdAndUserIdAndDeletedAtIsNull(workspaceId, invitee.getId())) {
             throw new ConflictException(
                     ErrorCode.BAD_REQUEST,
                     "User is already a member of this workspace."
@@ -77,13 +77,13 @@ public class WorkspaceMemberService {
         WorkspaceMember memberToUpdate = workspaceMemberRepository.findById(memberId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found"));
                 
-        if (!memberToUpdate.getWorkspace().getId().equals(workspaceId)) {
+        if (!memberToUpdate.getWorkspace().getId().equals(workspaceId) || memberToUpdate.getDeletedAt() != null) {
             throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found in this workspace");
         }
         
         // Prevent removing the last admin (basic check, could be more robust)
         if (memberToUpdate.getRole() == WorkspaceRole.ADMIN && newRole != WorkspaceRole.ADMIN) {
-            long adminCount = workspaceMemberRepository.findByWorkspaceId(workspaceId).stream()
+            long adminCount = workspaceMemberRepository.findByWorkspaceIdAndDeletedAtIsNull(workspaceId).stream()
                     .filter(m -> m.getRole() == WorkspaceRole.ADMIN)
                     .count();
             if (adminCount <= 1) {
@@ -102,13 +102,13 @@ public class WorkspaceMemberService {
         WorkspaceMember memberToRemove = workspaceMemberRepository.findById(memberId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found"));
                 
-        if (!memberToRemove.getWorkspace().getId().equals(workspaceId)) {
+        if (!memberToRemove.getWorkspace().getId().equals(workspaceId) || memberToRemove.getDeletedAt() != null) {
             throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Member not found in this workspace");
         }
         
         // Prevent removing the last admin
         if (memberToRemove.getRole() == WorkspaceRole.ADMIN) {
-            long adminCount = workspaceMemberRepository.findByWorkspaceId(workspaceId).stream()
+            long adminCount = workspaceMemberRepository.findByWorkspaceIdAndDeletedAtIsNull(workspaceId).stream()
                     .filter(m -> m.getRole() == WorkspaceRole.ADMIN)
                     .count();
             if (adminCount <= 1) {
@@ -116,7 +116,8 @@ public class WorkspaceMemberService {
             }
         }
 
-        workspaceMemberRepository.delete(memberToRemove);
+        memberToRemove.setDeletedAt(java.time.LocalDateTime.now());
+        workspaceMemberRepository.save(memberToRemove);
     }
 
     private WorkspaceMemberResponse mapToResponse(WorkspaceMember member) {
