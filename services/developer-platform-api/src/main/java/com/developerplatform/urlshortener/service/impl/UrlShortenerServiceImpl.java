@@ -27,6 +27,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 
     private final ShortenedUrlRepository shortenedUrlRepository;
     private final UrlClickRepository urlClickRepository;
+    private final java.time.Clock clock;
     
     private static final String BASE62_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -45,7 +46,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
             shortCode = generateUniqueShortCode();
         }
         
-        if (request.getExpiresAt() != null && request.getExpiresAt().isAfter(java.time.LocalDateTime.now().plusYears(1))) {
+        if (request.getExpiresAt() != null && request.getExpiresAt().isAfter(LocalDateTime.now(clock).plusYears(1))) {
             throw new IllegalArgumentException("Expiration date cannot be more than 1 year in the future.");
         }
         
@@ -66,7 +67,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
         ShortenedUrl shortenedUrl = shortenedUrlRepository.findByShortCodeAndDeletedAtIsNull(shortCode)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Short URL not found for code: " + shortCode));
         
-        if (shortenedUrl.getExpiresAt() != null && shortenedUrl.getExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+        if (shortenedUrl.getExpiresAt() != null && shortenedUrl.getExpiresAt().isBefore(LocalDateTime.now(clock))) {
             throw new ResourceNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "This short URL has expired.");
         }
         
@@ -75,7 +76,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
                 .shortenedUrlId(shortenedUrl.getId())
                 .ipAddress(ipAddress != null && ipAddress.length() > 45 ? ipAddress.substring(0, 45) : ipAddress)
                 .userAgent(userAgent)
-                .clickedAt(LocalDateTime.now())
+                .clickedAt(LocalDateTime.now(clock))
                 .build();
         urlClickRepository.save(click);
 

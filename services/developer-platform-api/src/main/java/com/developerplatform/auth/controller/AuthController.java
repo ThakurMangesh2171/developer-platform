@@ -8,6 +8,7 @@ import com.developerplatform.auth.dto.response.LoginResponse;
 import com.developerplatform.auth.dto.response.RegisterResponse;
 import com.developerplatform.auth.dto.response.UserResponse;
 import com.developerplatform.auth.service.interfaces.AuthService;
+import com.developerplatform.auth.utils.AuthValidationUtils;
 import com.developerplatform.common.constants.ApiPaths;
 import com.developerplatform.common.constants.messages.UserMessages;
 import com.developerplatform.common.response.ApiResponse;
@@ -27,22 +28,29 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
+
 @RestController
 @RequestMapping(ApiPaths.AUTH)
 @RequiredArgsConstructor
+@Slf4j
 public class AuthController {
 
     private final AuthService authService;
+    private final java.time.Clock clock;
+    private final AuthValidationUtils authValidationUtils;
 
     @PostMapping(ApiPaths.REGISTER)
     public ResponseEntity<ApiResponse<RegisterResponse>> register(@Valid @RequestBody RegisterRequest request) {
+        authValidationUtils.validateEmailIsUnique(request.getEmail());
+        
         RegisterResponse registerResponse = authService.register(request);
 
         ApiResponse<RegisterResponse> response = ApiResponse.<RegisterResponse>builder()
                 .success(true)
                 .message(UserMessages.USER_REGISTERED_SUCCESSFULLY)
                 .data(registerResponse)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity
@@ -58,7 +66,7 @@ public class AuthController {
                 .success(true)
                 .message("Login successful")
                 .data(loginResponse)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -71,7 +79,7 @@ public class AuthController {
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .success(true)
                 .message("Email verified successfully")
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -86,7 +94,7 @@ public class AuthController {
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .success(true)
                 .message("If an account exists, a password reset email will be sent.")
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
                 
         return ResponseEntity.ok(response);
@@ -101,7 +109,7 @@ public class AuthController {
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .success(true)
                 .message("Password reset successfully. You can now login.")
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
                 
         return ResponseEntity.ok(response);
@@ -117,7 +125,7 @@ public class AuthController {
                 .success(true)
                 .message("User profile retrieved successfully")
                 .data(userResponse)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -135,7 +143,7 @@ public class AuthController {
                 .success(true)
                 .message("Profile updated successfully")
                 .data(userResponse)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -152,7 +160,7 @@ public class AuthController {
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .success(true)
                 .message("Password changed successfully")
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);

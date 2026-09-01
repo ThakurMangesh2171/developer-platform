@@ -5,6 +5,8 @@ import com.developerplatform.auth.repository.UserRepository;
 import com.developerplatform.common.enums.ErrorCode;
 import com.developerplatform.common.exception.ConflictException;
 import com.developerplatform.common.exception.ResourceNotFoundException;
+import com.developerplatform.notification.enums.NotificationType;
+import com.developerplatform.notification.service.NotificationService;
 import com.developerplatform.workspace.dto.InviteMemberRequest;
 import com.developerplatform.workspace.dto.WorkspaceMemberResponse;
 import com.developerplatform.workspace.entity.Workspace;
@@ -18,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -30,6 +33,8 @@ public class WorkspaceMemberService {
     private final WorkspaceRepository workspaceRepository;
     private final UserRepository userRepository;
     private final WorkspaceSecurityService workspaceSecurityService;
+    private final NotificationService notificationService;
+    private final java.time.Clock clock;
 
     @Transactional(readOnly = true)
     public List<WorkspaceMemberResponse> getMembers(UUID workspaceId, UUID currentUserId) {
@@ -67,7 +72,17 @@ public class WorkspaceMemberService {
                 .status(WorkspaceMemberStatus.ACTIVE) // Auto-accepting for MVP
                 .build();
 
-        return mapToResponse(workspaceMemberRepository.save(newMember));
+        WorkspaceMember savedMember = workspaceMemberRepository.save(newMember);
+        
+        // Trigger notification
+        notificationService.createNotification(
+                invitee.getId(),
+                "Workspace Invitation",
+                "You have been invited to join the workspace: " + workspace.getName(),
+                NotificationType.INVITE
+        );
+
+        return mapToResponse(savedMember);
     }
 
     @Transactional
@@ -116,7 +131,7 @@ public class WorkspaceMemberService {
             }
         }
 
-        memberToRemove.setDeletedAt(java.time.LocalDateTime.now());
+        memberToRemove.setDeletedAt(LocalDateTime.now(clock));
         workspaceMemberRepository.save(memberToRemove);
     }
 

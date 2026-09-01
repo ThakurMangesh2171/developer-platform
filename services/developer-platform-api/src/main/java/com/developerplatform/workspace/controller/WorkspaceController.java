@@ -33,6 +33,7 @@ import java.util.UUID;
 public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
+    private final java.time.Clock clock;
 
     @PostMapping
     public ResponseEntity<ApiResponse<WorkspaceResponse>> createWorkspace(
@@ -45,7 +46,7 @@ public class WorkspaceController {
                 .success(true)
                 .message(WorkspaceMessages.WORKSPACE_CREATED)
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity
@@ -64,7 +65,7 @@ public class WorkspaceController {
                 .success(true)
                 .message("Workspace retrieved successfully")
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -80,7 +81,7 @@ public class WorkspaceController {
                 .success(true)
                 .message("Workspaces retrieved successfully")
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -98,7 +99,7 @@ public class WorkspaceController {
                 .success(true)
                 .message(WorkspaceMessages.WORKSPACE_UPDATED)
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -114,7 +115,7 @@ public class WorkspaceController {
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .success(true)
                 .message(WorkspaceMessages.WORKSPACE_DELETED)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -131,7 +132,7 @@ public class WorkspaceController {
                 .success(true)
                 .message("Workspace stats retrieved successfully")
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);

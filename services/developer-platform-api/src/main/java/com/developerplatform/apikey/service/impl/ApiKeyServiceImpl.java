@@ -21,6 +21,8 @@ import com.developerplatform.workspace.enums.WorkspaceStatus;
 import com.developerplatform.workspace.repository.WorkspaceRepository;
 import com.developerplatform.workspace.entity.WorkspaceMember;
 import com.developerplatform.workspace.enums.WorkspaceRole;
+import com.developerplatform.notification.enums.NotificationType;
+import com.developerplatform.notification.service.NotificationService;
 import com.developerplatform.workspace.repository.WorkspaceMemberRepository;
 import com.developerplatform.common.exception.ForbiddenException;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,8 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     private final ProjectRepository projectRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final NotificationService notificationService;
+    private final java.time.Clock clock;
 
     @Override
     @Transactional
@@ -60,6 +64,14 @@ public class ApiKeyServiceImpl implements ApiKeyService {
                 .build();
 
         ApiKey savedApiKey = apiKeyRepository.save(apiKey);
+        
+        notificationService.createNotification(
+                userId,
+                "API Key Generated",
+                "A new API key '" + request.getName() + "' was generated for project ID: " + request.getProjectId(),
+                NotificationType.SECURITY
+        );
+
         return ApiKeyMapper.toCreateResponse(savedApiKey, rawKey);
     }
 
@@ -86,7 +98,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         validateProjectAccess(userId, apiKey.getProjectId(), List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
 
         apiKey.setStatus(ApiKeyStatus.REVOKED);
-        apiKey.setDeletedAt(LocalDateTime.now());
+        apiKey.setDeletedAt(LocalDateTime.now(clock));
         apiKeyRepository.save(apiKey);
     }
 

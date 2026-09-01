@@ -33,6 +33,7 @@ import java.util.UUID;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final java.time.Clock clock;
 
     @PostMapping
     public ResponseEntity<ApiResponse<ProjectResponse>> createProject(
@@ -45,7 +46,7 @@ public class ProjectController {
                 .success(true)
                 .message(ProjectMessages.PROJECT_CREATED)
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity
@@ -64,7 +65,7 @@ public class ProjectController {
                 .success(true)
                 .message("Project retrieved successfully")
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -81,7 +82,7 @@ public class ProjectController {
                 .success(true)
                 .message("Projects retrieved successfully")
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -99,7 +100,7 @@ public class ProjectController {
                 .success(true)
                 .message(ProjectMessages.PROJECT_UPDATED)
                 .data(responseData)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);
@@ -115,7 +116,7 @@ public class ProjectController {
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .success(true)
                 .message(ProjectMessages.PROJECT_DELETED)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .build();
 
         return ResponseEntity.ok(response);

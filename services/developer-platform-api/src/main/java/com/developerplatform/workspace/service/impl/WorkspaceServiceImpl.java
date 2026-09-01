@@ -44,6 +44,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final ProjectRepository projectRepository;
     private final ApiKeyRepository apiKeyRepository;
     private final ShortenedUrlRepository shortenedUrlRepository;
+    private final java.time.Clock clock;
 
     @Override
     @Transactional
@@ -135,7 +136,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 ));
 
         workspace.setStatus(WorkspaceStatus.ARCHIVED);
-        workspace.setDeletedAt(LocalDateTime.now());
+        workspace.setDeletedAt(LocalDateTime.now(clock));
         workspaceRepository.save(workspace);
     }
     

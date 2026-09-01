@@ -39,6 +39,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRepository projectRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final java.time.Clock clock;
 
     @Override
     @Transactional
@@ -105,7 +106,7 @@ public class ProjectServiceImpl implements ProjectService {
         Project project = getProjectAndValidateAccess(userId, projectId, List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
 
         project.setStatus(ProjectStatus.ARCHIVED);
-        project.setDeletedAt(LocalDateTime.now());
+        project.setDeletedAt(LocalDateTime.now(clock));
         projectRepository.save(project);
     }
 

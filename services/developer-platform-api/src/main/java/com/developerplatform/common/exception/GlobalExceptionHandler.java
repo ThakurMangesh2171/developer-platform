@@ -14,8 +14,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
+
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+    private final java.time.Clock clock;
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(
@@ -28,7 +32,7 @@ public class GlobalExceptionHandler {
                 .message(exception.getMessage())
                 .errorCode(exception.getErrorCode().name())
                 .errors(null)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .path(request.getRequestURI())
                 .build();
 
@@ -54,7 +58,7 @@ public class GlobalExceptionHandler {
                 .message("Validation failed.")
                 .errorCode(ErrorCode.VALIDATION_ERROR.name())
                 .errors(errors)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .path(request.getRequestURI())
                 .build();
 
@@ -79,7 +83,7 @@ public class GlobalExceptionHandler {
                 .message("Validation failed.")
                 .errorCode(ErrorCode.VALIDATION_ERROR.name())
                 .errors(errors)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .path(request.getRequestURI())
                 .build();
 
@@ -99,7 +103,7 @@ public class GlobalExceptionHandler {
                 .message(exception.getMessage())
                 .errorCode(ErrorCode.BAD_REQUEST.name())
                 .errors(null)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .path(request.getRequestURI())
                 .build();
 
@@ -119,7 +123,7 @@ public class GlobalExceptionHandler {
                 .message(exception.getMessage())
                 .errorCode("TOO_MANY_REQUESTS")
                 .errors(null)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .path(request.getRequestURI())
                 .build();
 
@@ -139,7 +143,7 @@ public class GlobalExceptionHandler {
                 .message("An unexpected error occurred.")
                 .errorCode(ErrorCode.INTERNAL_SERVER_ERROR.name())
                 .errors(List.of(exception.getMessage()))
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(clock))
                 .path(request.getRequestURI())
                 .build();
 

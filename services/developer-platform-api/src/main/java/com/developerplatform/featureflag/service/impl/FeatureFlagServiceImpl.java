@@ -26,6 +26,7 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
     private final FeatureFlagRepository featureFlagRepository;
     private final FeatureFlagMapper featureFlagMapper;
     private final WebhookService webhookService;
+    private final java.time.Clock clock;
 
     @Override
     @Transactional
@@ -92,7 +93,7 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
                         "Feature flag not found"
                 ));
                 
-        flag.setDeletedAt(LocalDateTime.now());
+        flag.setDeletedAt(LocalDateTime.now(clock));
         featureFlagRepository.save(flag);
     }
 }

@@ -28,6 +28,7 @@ public class UrlAnalyticsServiceImpl implements UrlAnalyticsService {
 
     private final ShortenedUrlRepository shortenedUrlRepository;
     private final UrlClickRepository urlClickRepository;
+    private final java.time.Clock clock;
 
     @Override
     @Transactional(readOnly = true)
@@ -40,8 +41,8 @@ public class UrlAnalyticsServiceImpl implements UrlAnalyticsService {
         }
 
         // Get clicks for the last 30 days
-        LocalDateTime start = LocalDateTime.now().minusDays(30).with(LocalTime.MIN);
-        LocalDateTime end = LocalDateTime.now().with(LocalTime.MAX);
+        LocalDateTime start = LocalDateTime.now(clock).minusDays(30).with(LocalTime.MIN);
+        LocalDateTime end = LocalDateTime.now(clock).with(LocalTime.MAX);
         
         List<UrlClick> clicks = urlClickRepository.findByShortenedUrlIdAndClickedAtBetweenAndDeletedAtIsNull(
                 shortenedUrl.getId(), start, end);

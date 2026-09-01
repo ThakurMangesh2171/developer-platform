@@ -34,8 +34,11 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -44,20 +47,17 @@ public class AuthServiceImpl implements AuthService {
     private final UserMapper userMapper;
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
+    private final java.time.Clock clock;
 
     @Override
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ConflictException(
-                    ErrorCode.USER_ALREADY_EXISTS,
-                    UserMessages.USER_ALREADY_EXISTS
-            );
-        }
-
+        log.info("Attempting to register new user with email: {}", request.getEmail());
+        
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         User user = userMapper.toEntity(request, encodedPassword);
         User savedUser = userRepository.save(user);
+        log.info("Successfully saved user {} to database", savedUser.getId());
 
         // Generate verification token
         String token = UUID.randomUUID().toString();
@@ -66,7 +66,7 @@ public class AuthServiceImpl implements AuthService {
                 .user(savedUser)
                 .token(token)
                 .tokenType(TokenType.EMAIL_VERIFICATION)
-                .expiresAt(LocalDateTime.now().plusHours(24))
+                .expiresAt(LocalDateTime.now(clock).plusHours(24))
                 .isUsed(false)
                 .build();
         userTokenRepository.save(userToken);
@@ -80,6 +80,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
+        log.info("Attempting to login user with email: {}", request.getEmail());
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException(
                         ErrorCode.UNAUTHORIZED,
@@ -87,6 +88,7 @@ public class AuthServiceImpl implements AuthService {
                 ));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            log.warn("Login failed. Invalid password for email: {}", request.getEmail());
             throw new UnauthorizedException(
                     ErrorCode.UNAUTHORIZED,
                     UserMessages.INVALID_CREDENTIALS
@@ -94,6 +96,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
+            log.warn("Login failed. Email not verified for user ID: {}", user.getId());
             throw new ForbiddenException(
                     ErrorCode.FORBIDDEN,
                     UserMessages.EMAIL_NOT_VERIFIED
@@ -101,6 +104,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (user.getStatus() != UserStatus.ACTIVE) {
+            log.warn("Login failed. Account status is {} for user ID: {}", user.getStatus(), user.getId());
             throw new ForbiddenException(
                     ErrorCode.FORBIDDEN,
                     "Your account status is: " + user.getStatus() + ". Please contact support."
@@ -111,6 +115,7 @@ public class AuthServiceImpl implements AuthService {
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getId());
         long expiresIn = jwtTokenProvider.getAccessTokenExpirationInSeconds();
 
+        log.info("User {} successfully logged in. Generating tokens.", user.getId());
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -121,13 +126,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void verifyEmail(String token) {
+        log.info("Attempting to verify email with provided token");
         UserToken userToken = userTokenRepository.findByTokenAndTokenType(token, TokenType.EMAIL_VERIFICATION)
                 .orElseThrow(() -> new BadRequestException(
                         ErrorCode.BAD_REQUEST,
                         "Verification token is invalid"
                 ));
 
-        if (userToken.isUsed() || userToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (userToken.isUsed() || userToken.getExpiresAt().isBefore(LocalDateTime.now(clock))) {
             throw new BadRequestException(
                     ErrorCode.BAD_REQUEST,
                     "Verification token has expired or already been used"
@@ -145,6 +151,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void forgotPassword(String email) {
+        log.info("Processing forgot password request for email: {}", email);
         User user = userRepository.findByEmail(email)
                 .orElse(null);
 
@@ -156,25 +163,29 @@ public class AuthServiceImpl implements AuthService {
                     .user(user)
                     .token(token)
                     .tokenType(TokenType.PASSWORD_RESET)
-                    .expiresAt(LocalDateTime.now().plusMinutes(15))
+                    .expiresAt(LocalDateTime.now(clock).plusMinutes(15))
                     .isUsed(false)
                     .build();
             userTokenRepository.save(userToken);
             
             emailService.sendPasswordResetEmail(user.getEmail(), token);
+            log.info("Sent password reset email to user ID: {}", user.getId());
+        } else {
+            log.info("Forgot password requested for non-existent email: {}", email);
         }
     }
 
     @Override
     @Transactional
     public void resetPassword(String token, String newPassword) {
+        log.info("Attempting to reset password with provided token");
         UserToken userToken = userTokenRepository.findByTokenAndTokenType(token, TokenType.PASSWORD_RESET)
                 .orElseThrow(() -> new BadRequestException(
                         ErrorCode.BAD_REQUEST,
                         "Reset token is invalid"
                 ));
 
-        if (userToken.isUsed() || userToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (userToken.isUsed() || userToken.getExpiresAt().isBefore(LocalDateTime.now(clock))) {
             throw new BadRequestException(
                     ErrorCode.BAD_REQUEST,
                     "Reset token has expired or already been used"
@@ -237,6 +248,7 @@ public class AuthServiceImpl implements AuthService {
                 ));
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+            log.warn("Password change failed. Incorrect current password for user ID: {}", userId);
             throw new BadRequestException(
                     ErrorCode.BAD_REQUEST,
                     "Current password is incorrect"
@@ -245,5 +257,6 @@ public class AuthServiceImpl implements AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+        log.info("Successfully changed password for user ID: {}", userId);
     }
 }
