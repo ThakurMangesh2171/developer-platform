@@ -7,6 +7,7 @@ import com.developerplatform.project.dto.request.CreateProjectRequest;
 import com.developerplatform.project.dto.request.UpdateProjectRequest;
 import com.developerplatform.project.dto.response.ProjectResponse;
 import com.developerplatform.project.service.interfaces.ProjectService;
+import com.developerplatform.project.utils.ProjectValidationUtils;
 import com.developerplatform.security.UserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,12 +35,14 @@ public class ProjectController {
 
     private final ProjectService projectService;
     private final java.time.Clock clock;
+    private final ProjectValidationUtils projectValidationUtils;
 
     @PostMapping
     public ResponseEntity<ApiResponse<ProjectResponse>> createProject(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody CreateProjectRequest request) {
 
+        projectValidationUtils.validateProjectNameForCreation(request.getWorkspaceId(), request.getName());
         ProjectResponse responseData = projectService.createProject(principal.getId(), request);
 
         ApiResponse<ProjectResponse> response = ApiResponse.<ProjectResponse>builder()
@@ -94,6 +97,7 @@ public class ProjectController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateProjectRequest request) {
 
+        projectValidationUtils.validateProjectNameForUpdate(id, request.getName());
         ProjectResponse responseData = projectService.updateProject(principal.getId(), id, request);
 
         ApiResponse<ProjectResponse> response = ApiResponse.<ProjectResponse>builder()

@@ -46,13 +46,6 @@ public class ProjectServiceImpl implements ProjectService {
     public ProjectResponse createProject(UUID userId, CreateProjectRequest request) {
         validateWorkspaceAccess(userId, request.getWorkspaceId(), List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
 
-        if (projectRepository.existsByWorkspaceIdAndNameAndStatusNot(request.getWorkspaceId(), request.getName(), ProjectStatus.ARCHIVED)) {
-            throw new ConflictException(
-                    ErrorCode.PROJECT_ALREADY_EXISTS,
-                    ProjectMessages.PROJECT_ALREADY_EXISTS
-            );
-        }
-
         Project project = ProjectMapper.toEntity(request);
         Project savedProject = projectRepository.save(project);
         return ProjectMapper.toResponse(savedProject);
@@ -82,16 +75,6 @@ public class ProjectServiceImpl implements ProjectService {
     @CachePut(value = CacheConfig.PROJECT_CACHE, key = "#projectId")
     public ProjectResponse updateProject(UUID userId, UUID projectId, UpdateProjectRequest request) {
         Project project = getProjectAndValidateAccess(userId, projectId, List.of(WorkspaceRole.ADMIN, WorkspaceRole.MEMBER));
-
-        // If name has changed, verify uniqueness within the workspace
-        if (!project.getName().equalsIgnoreCase(request.getName())) {
-            if (projectRepository.existsByWorkspaceIdAndNameAndStatusNot(project.getWorkspaceId(), request.getName(), ProjectStatus.ARCHIVED)) {
-                throw new ConflictException(
-                        ErrorCode.PROJECT_ALREADY_EXISTS,
-                        ProjectMessages.PROJECT_ALREADY_EXISTS
-                );
-            }
-        }
 
         project.setName(request.getName());
         project.setDescription(request.getDescription());
