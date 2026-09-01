@@ -10,6 +10,7 @@ import com.developerplatform.auth.entity.User;
 import com.developerplatform.auth.enums.UserStatus;
 import com.developerplatform.auth.mapper.UserMapper;
 import com.developerplatform.auth.repository.UserRepository;
+import com.developerplatform.auth.repository.UserTokenRepository;
 import com.developerplatform.auth.service.interfaces.AuthService;
 import com.developerplatform.auth.service.interfaces.EmailService;
 import com.developerplatform.common.enums.ErrorCode;
@@ -20,14 +21,16 @@ import com.developerplatform.common.exception.ForbiddenException;
 import com.developerplatform.common.exception.UnauthorizedException;
 import com.developerplatform.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.developerplatform.auth.dto.response.UserResponse;
 import com.developerplatform.common.exception.ResourceNotFoundException;
+import com.developerplatform.auth.entity.UserToken;
+import com.developerplatform.auth.enums.TokenType;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -36,10 +39,10 @@ import java.util.concurrent.TimeUnit;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
+    private final UserTokenRepository userTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final JwtTokenProvider jwtTokenProvider;
-    private final StringRedisTemplate redisTemplate;
     private final EmailService emailService;
 
     @Override
@@ -59,9 +62,14 @@ public class AuthServiceImpl implements AuthService {
         // Generate verification token
         String token = UUID.randomUUID().toString();
 
-        // Store in Redis (key: email_verification:<token> -> value: email, expires in 24 hours)
-        String redisKey = "email_verification:" + token;
-        redisTemplate.opsForValue().set(redisKey, savedUser.getEmail(), 24, TimeUnit.HOURS);
+        UserToken userToken = UserToken.builder()
+                .user(savedUser)
+                .token(token)
+                .tokenType(TokenType.EMAIL_VERIFICATION)
+                .expiresAt(LocalDateTime.now().plusHours(24))
+                .isUsed(false)
+                .build();
+        userTokenRepository.save(userToken);
 
         // Send email asynchronously
         emailService.sendVerificationEmail(savedUser.getEmail(), token);
@@ -113,28 +121,26 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void verifyEmail(String token) {
-        String redisKey = "email_verification:" + token;
-        String email = redisTemplate.opsForValue().get(redisKey);
+        UserToken userToken = userTokenRepository.findByTokenAndTokenType(token, TokenType.EMAIL_VERIFICATION)
+                .orElseThrow(() -> new BadRequestException(
+                        ErrorCode.BAD_REQUEST,
+                        "Verification token is invalid"
+                ));
 
-        if (email == null) {
+        if (userToken.isUsed() || userToken.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new BadRequestException(
                     ErrorCode.BAD_REQUEST,
-                    "Verification token is invalid or has expired"
+                    "Verification token has expired or already been used"
             );
         }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BadRequestException(
-                        ErrorCode.BAD_REQUEST,
-                        "User not found for this verification token"
-                ));
-
+        User user = userToken.getUser();
         user.setStatus(UserStatus.ACTIVE);
         user.setEmailVerified(true);
         userRepository.save(user);
 
-        // Remove token from Redis
-        redisTemplate.delete(redisKey);
+        userToken.setUsed(true);
+        userTokenRepository.save(userToken);
     }
     @Override
     @Transactional
@@ -145,8 +151,15 @@ public class AuthServiceImpl implements AuthService {
         // Even if user not found, we don't throw an error to prevent email enumeration
         if (user != null) {
             String token = UUID.randomUUID().toString();
-            String redisKey = "password_reset:" + token;
-            redisTemplate.opsForValue().set(redisKey, user.getEmail(), 15, TimeUnit.MINUTES);
+            
+            UserToken userToken = UserToken.builder()
+                    .user(user)
+                    .token(token)
+                    .tokenType(TokenType.PASSWORD_RESET)
+                    .expiresAt(LocalDateTime.now().plusMinutes(15))
+                    .isUsed(false)
+                    .build();
+            userTokenRepository.save(userToken);
             
             emailService.sendPasswordResetEmail(user.getEmail(), token);
         }
@@ -155,27 +168,25 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void resetPassword(String token, String newPassword) {
-        String redisKey = "password_reset:" + token;
-        String email = redisTemplate.opsForValue().get(redisKey);
+        UserToken userToken = userTokenRepository.findByTokenAndTokenType(token, TokenType.PASSWORD_RESET)
+                .orElseThrow(() -> new BadRequestException(
+                        ErrorCode.BAD_REQUEST,
+                        "Reset token is invalid"
+                ));
 
-        if (email == null) {
+        if (userToken.isUsed() || userToken.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new BadRequestException(
                     ErrorCode.BAD_REQUEST,
-                    "Reset token is invalid or has expired"
+                    "Reset token has expired or already been used"
             );
         }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BadRequestException(
-                        ErrorCode.BAD_REQUEST,
-                        "User not found"
-                ));
-
+        User user = userToken.getUser();
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        // Invalidate token
-        redisTemplate.delete(redisKey);
+        userToken.setUsed(true);
+        userTokenRepository.save(userToken);
     }
 
     @Override
